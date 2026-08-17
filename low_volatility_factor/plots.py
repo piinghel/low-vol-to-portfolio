@@ -177,8 +177,8 @@ def plot_naive_leg_risk(
         scenario_config.high_volatility_long: "High-volatility decile",
     }
     colors = {
-        scenario_config.low_volatility_long: plot_config.low_volatility_color,
-        scenario_config.high_volatility_long: plot_config.high_volatility_color,
+        scenario_config.low_volatility_long: plot_config.reference_low_color,
+        scenario_config.high_volatility_long: plot_config.reference_high_color,
     }
     volatility_values = [
         float(selected.filter(pl.col("scenario") == scenario)["volatility"][0]) * 100
@@ -200,15 +200,18 @@ def plot_naive_leg_risk(
         (volatility_values, "Annualized volatility", "%.1f%%"),
         (beta_values, "Average ex-ante beta", "%.2f"),
     ]
+    bar_positions = [0.45, 0.55]
     for index, (axis, (values, title, label_format)) in enumerate(
         zip(axes, panel_specs, strict=True)
     ):
         bars = axis.barh(
-            [labels[scenario] for scenario in scenarios],
+            bar_positions,
             values,
             color=[colors[scenario] for scenario in scenarios],
-            height=0.42,
+            height=0.07,
         )
+        axis.set_yticks(bar_positions, [labels[scenario] for scenario in scenarios])
+        axis.set_ylim(0.38, 0.62)
         axis.bar_label(
             bars,
             fmt=label_format,
@@ -301,14 +304,16 @@ def plot_beta_diagnostic(
         dates,
         data.get_column("stock_beta"),
         label="Aggregated ex-ante stock beta",
-        color=plot_config.volatility_scaled_color,
-        alpha=0.75,
+        color=plot_config.ex_ante_beta_color,
+        linewidth=1.1,
+        alpha=0.85,
     )
     axis.plot(
         dates,
         data.get_column("rolling_realized_beta"),
         label=f"{beta_config.lookback}-day realized beta",
-        color=plot_config.realized_beta_color,
+        color=plot_config.volatility_scaled_color,
+        linewidth=1.6,
     )
     axis.axhspan(-0.1, 0.1, color=plot_config.grid_color, alpha=0.3, linewidth=0)
     axis.axhline(
