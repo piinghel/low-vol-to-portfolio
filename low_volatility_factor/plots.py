@@ -30,7 +30,12 @@ def _finish_figure(
     fig.patch.set_facecolor(plot_config.background_color)
     for axis in fig.axes:
         axis.set_facecolor(plot_config.background_color)
-        axis.tick_params(colors=plot_config.muted_text_color, labelsize=10.5)
+        axis.tick_params(
+            colors=plot_config.muted_text_color,
+            labelsize=10.5,
+            length=0,
+            width=0,
+        )
         axis.xaxis.label.set_color(plot_config.muted_text_color)
         axis.xaxis.label.set_fontsize(11.5)
         axis.yaxis.label.set_color(plot_config.muted_text_color)
@@ -202,7 +207,7 @@ def plot_naive_leg_risk(
             [labels[scenario] for scenario in scenarios],
             values,
             color=[colors[scenario] for scenario in scenarios],
-            height=0.56,
+            height=0.42,
         )
         axis.bar_label(
             bars,
@@ -407,6 +412,7 @@ def _compound_return_series(
 
 def plot_dotcom_comparison(
     daily: pl.DataFrame,
+    scaled_leg_daily: pl.DataFrame,
     path: Path,
     scenario_config: ScenarioConfig,
     plot_config: PlotConfig,
@@ -427,14 +433,14 @@ def plot_dotcom_comparison(
         window.select("date", "market_return").unique("date"),
         "market_return",
     )
+    leg_window = scaled_leg_daily.filter(pl.col("date").is_between(start, end))
     long_leg = _compound_return_series(
-        window.filter(pl.col("scenario") == scenario_config.low_volatility_long),
+        leg_window.filter(pl.col("scenario") == "scaled_long_leg"),
         "gross_return",
     )
     short_leg = _compound_return_series(
-        window.filter(pl.col("scenario") == scenario_config.high_volatility_long),
+        leg_window.filter(pl.col("scenario") == "scaled_short_leg"),
         "gross_return",
-        sign=-1.0,
     )
     fig, axes = plt.subplots(
         2,
@@ -459,13 +465,13 @@ def plot_dotcom_comparison(
     legs_axis.plot(
         long_leg.get_column("date").to_list(),
         long_leg.get_column("wealth"),
-        label="Low-vol long",
+        label="Scaled low-vol long",
         color=plot_config.low_volatility_color,
     )
     legs_axis.plot(
         short_leg.get_column("date").to_list(),
         short_leg.get_column("wealth"),
-        label="High-vol short",
+        label="Scaled high-vol short",
         color=plot_config.high_volatility_color,
     )
     for axis in axes:
@@ -528,6 +534,7 @@ def render_article_figures(
     stage_metrics: pl.DataFrame,
     target_exposures: pl.DataFrame,
     stage_daily: pl.DataFrame,
+    scaled_leg_daily: pl.DataFrame,
     config: ResearchConfig,
 ) -> None:
     """Render every article figure from one explicit output specification."""
@@ -571,6 +578,7 @@ def render_article_figures(
         "dotcom_comparison": partial(
             plot_dotcom_comparison,
             stage_daily,
+            scaled_leg_daily,
             scenario_config=config.scenarios,
             plot_config=config.plots,
         ),

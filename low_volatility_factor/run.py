@@ -407,6 +407,20 @@ def run(
         schedule,
         config.costs,
     )
+    scaled_leg_targets = stage_targets.filter(
+        pl.col("scenario") == config.scenarios.volatility_scaled_long_short
+    ).with_columns(
+        pl.when(pl.col("leg") == "long")
+        .then(pl.lit("scaled_long_leg"))
+        .otherwise(pl.lit("scaled_short_leg"))
+        .alias("scenario")
+    )
+    scaled_leg_daily = simulate_stock_targets(
+        scaled_leg_targets,
+        asset_returns,
+        date_to_signal,
+        config.data,
+    )
 
     decile_daily = simulate_stock_targets(
         decile_targets, asset_returns, date_to_signal, config.data
@@ -437,6 +451,7 @@ def run(
         stage_metrics=stage_metrics,
         target_exposures=target_exposures,
         stage_daily=stage_daily,
+        scaled_leg_daily=scaled_leg_daily,
         config=config,
     )
 
