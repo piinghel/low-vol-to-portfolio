@@ -148,17 +148,17 @@ class ScenarioConfig:
 
 @dataclass(frozen=True)
 class PlotConfig:
-    decile_profile_color: str = "#A7ADB5"
-    low_volatility_color: str = "#AB6C82"
-    high_volatility_color: str = "#D8737F"
-    naive_long_short_color: str = "#8B929A"
-    volatility_scaled_color: str = "#FCBB6D"
-    realized_beta_color: str = "#AB6C82"
-    text_color: str = "#24303A"
-    muted_text_color: str = "#56616B"
-    grid_color: str = "#DCE2E7"
+    decile_profile_color: str = "#B2BBC3"
+    low_volatility_color: str = "#2F6F73"
+    high_volatility_color: str = "#C45B52"
+    naive_long_short_color: str = "#8A949E"
+    volatility_scaled_color: str = "#C9923E"
+    realized_beta_color: str = "#4D6D8A"
+    text_color: str = "#2E3A45"
+    muted_text_color: str = "#66737E"
+    grid_color: str = "#E2E7EA"
     background_color: str = "#FFFFFF"
-    zero_line_color: str = "#56616B"
+    zero_line_color: str = "#87939C"
 
 
 @dataclass(frozen=True)

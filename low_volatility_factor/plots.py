@@ -56,6 +56,7 @@ def _clean_axis(axis: plt.Axes, plot_config: PlotConfig) -> None:
         axis="y",
         color=plot_config.grid_color,
         linewidth=0.7,
+        linestyle=":",
         alpha=0.8,
     )
     axis.set_axisbelow(True)
@@ -199,13 +200,19 @@ def plot_naive_leg_risk(
             fmt=label_format,
             padding=5,
             color=plot_config.text_color,
-            fontweight="bold",
+            fontsize=10.5,
         )
         axis.set_xlabel(title)
         axis.set_xlim(0, max(values) * 1.2)
         _clean_axis(axis, plot_config)
         axis.grid(axis="y", visible=False)
-        axis.grid(axis="x", color=plot_config.grid_color, linewidth=0.7, alpha=0.8)
+        axis.grid(
+            axis="x",
+            color=plot_config.grid_color,
+            linewidth=0.7,
+            linestyle=":",
+            alpha=0.8,
+        )
         if index == 1 and not mobile_layout:
             axis.tick_params(axis="y", left=False, labelleft=False)
     _finish_figure(fig, path, plot_config)
@@ -290,7 +297,12 @@ def plot_beta_diagnostic(
         color=plot_config.realized_beta_color,
     )
     axis.axhspan(-0.1, 0.1, color=plot_config.grid_color, alpha=0.3, linewidth=0)
-    axis.axhline(0, color=plot_config.zero_line_color, linewidth=0.8)
+    axis.axhline(
+        0,
+        color=plot_config.zero_line_color,
+        linewidth=0.8,
+        linestyle=":",
+    )
     axis.set_ylabel("Beta")
     axis.legend(frameon=False, ncol=1 if mobile_layout else 2)
     _clean_axis(axis, plot_config)
@@ -317,7 +329,12 @@ def plot_cumulative_performance(
             label=labels[scenario],
             color=colors[scenario],
         )
-    axis.axhline(1, color=plot_config.zero_line_color, linewidth=0.8)
+    axis.axhline(
+        1,
+        color=plot_config.zero_line_color,
+        linewidth=0.8,
+        linestyle=":",
+    )
     axis.set_yscale("log")
     wealth_min = require_finite_float(
         data.get_column("wealth").min(), "minimum cumulative wealth"
