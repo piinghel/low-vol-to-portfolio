@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import cast
 
 import polars as pl
+
 from low_volatility_factor.config import BucketConfig, DataConfig, SignalConfig
 from low_volatility_factor.signals import (
     assign_volatility_buckets,

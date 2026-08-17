@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import cast
 
 import polars as pl
+
 from low_volatility_factor.backtest import (
     compute_realized_turnover,
     simulate_stock_targets,

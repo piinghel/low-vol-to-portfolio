@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 
 import numpy as np
+
 from low_volatility_factor.metrics import _metric_row
 
 

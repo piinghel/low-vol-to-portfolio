@@ -7,6 +7,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import polars as pl
+
 from low_volatility_factor.config import BetaConfig, DataConfig
 from low_volatility_factor.risk import compute_trailing_market_beta
 

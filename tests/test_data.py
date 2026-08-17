@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 import polars as pl
+
 from low_volatility_factor.config import DataConfig
 from low_volatility_factor.data import build_investable_universe
 
