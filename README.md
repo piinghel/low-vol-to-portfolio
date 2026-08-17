@@ -2,7 +2,7 @@
 
 This standalone project contains the deterministic Polars pipeline and figures
 used by the blog post **“The Low-Volatility Factor: Portfolio Construction
-Matters.”** The Python modules are the source of truth; no notebook is required.
+Matters.”**
 
 ## Run the research
 
