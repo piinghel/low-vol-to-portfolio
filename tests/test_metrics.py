@@ -17,9 +17,11 @@ class MetricTests(unittest.TestCase):
         ]
 
         for values, annualization in invalid_cases:
-            with self.subTest(values=values, annualization=annualization):
-                with self.assertRaises(ValueError):
-                    _metric_row(values, annualization=annualization)
+            with (
+                self.subTest(values=values, annualization=annualization),
+                self.assertRaises(ValueError),
+            ):
+                _metric_row(values, annualization=annualization)
 
 
 if __name__ == "__main__":

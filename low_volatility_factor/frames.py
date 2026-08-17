@@ -29,7 +29,7 @@ def require_finite_float(value: object, name: str) -> float:
     """Return a numeric dataframe scalar or reject an invalid aggregate result."""
 
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ValueError(f"{name} must be a numeric scalar, got {value!r}")
+        raise TypeError(f"{name} must be a numeric scalar, got {value!r}")
     result = float(value)
     if not math.isfinite(result):
         raise ValueError(f"{name} must be finite, got {result!r}")

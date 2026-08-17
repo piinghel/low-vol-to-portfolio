@@ -1,14 +1,16 @@
 # Low-volatility factor research
 
-This package replaces the former exploratory notebook with a deterministic Polars pipeline. It generates the research tables and seven figures used by the blog post **“The Low-Volatility Factor: Portfolio Construction Matters,”** including desktop and mobile layouts for each figure.
+This standalone project contains the deterministic Polars pipeline and figures
+used by the blog post **“The Low-Volatility Factor: Portfolio Construction
+Matters.”** The Python modules are the source of truth; no notebook is required.
 
 ## Run the research
 
-From the `ml_rank` project root:
+From this project’s root:
 
 ```bash
-uv sync --all-packages --extra dev
-uv run low-vol-factor
+uv sync --dev
+uv run low-vol-factor --data-root /path/to/research-data
 ```
 
 Outputs are written to this project’s `output/latest/` directory. The run records its full configuration, input-file metadata, dependency versions, data-quality checks, targets, daily results, metrics, and figures.
@@ -16,10 +18,10 @@ Outputs are written to this project’s `output/latest/` directory. The run reco
 Run the deliberately small correctness suite with:
 
 ```bash
-uv run ruff check projects/blog/low_volatility_factor
-uv run ruff format --check projects/blog/low_volatility_factor
-uv run ty check projects/blog/low_volatility_factor
-uv run python -m unittest discover -s projects/blog/low_volatility_factor/tests -v
+uv run ruff check .
+uv run ruff format --check .
+uv run ty check .
+uv run python -m unittest discover -s tests -v
 ```
 
 The eleven tests cover point-in-time membership, the $5 unadjusted-price filter, causal signal timing, deterministic deciles, the 4% weight cap and unnormalized short leg, fixed-quantity long/short P&L, turnover against drifted pre-trade weights, and degenerate beta inputs.
@@ -48,5 +50,3 @@ Missing held-stock returns are explicitly filled with zero and reported as a pos
 - `metrics.py`: standard performance, exposure, and realized-beta metrics.
 - `plots.py`: deterministic article figures.
 - `run.py`: one-command orchestration and artifacts.
-
-The retired notebook's assumptions and checksum are preserved in `legacy_notebook_notes.md`.

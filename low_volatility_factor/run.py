@@ -456,10 +456,7 @@ def main() -> None:
         "--output",
         type=Path,
         default=None,
-        help=(
-            "Output directory "
-            "(default: <article-project>/output/latest)"
-        ),
+        help=("Output directory (default: <article-project>/output/latest)"),
     )
     args = parser.parse_args()
     repo_root = args.repo_root.expanduser().resolve()
