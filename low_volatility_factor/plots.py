@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import date
 from functools import partial
 from pathlib import Path
 
@@ -11,14 +12,20 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import polars as pl
-from matplotlib.ticker import FuncFormatter, NullFormatter
+from matplotlib.ticker import FuncFormatter, NullFormatter, NullLocator
 
 from .config import BetaConfig, PlotConfig, ResearchConfig, ScenarioConfig
 from .frames import require_finite_float
 from .metrics import cumulative_returns, drawdown_series
 
 
-def _finish_figure(fig: plt.Figure, path: Path, plot_config: PlotConfig) -> None:
+def _finish_figure(
+    fig: plt.Figure,
+    path: Path,
+    plot_config: PlotConfig,
+    *,
+    tight_layout: bool = True,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.patch.set_facecolor(plot_config.background_color)
     for axis in fig.axes:
@@ -36,9 +43,11 @@ def _finish_figure(fig: plt.Figure, path: Path, plot_config: PlotConfig) -> None
             for label in legend.get_texts():
                 label.set_color(plot_config.text_color)
                 label.set_fontsize(10.5)
-    fig.tight_layout()
+    if tight_layout:
+        fig.tight_layout()
     fig.savefig(
         path,
+        format=path.suffix.removeprefix("."),
         dpi=300,
         bbox_inches="tight",
         pad_inches=0.03,
@@ -309,79 +318,169 @@ def plot_beta_diagnostic(
     _finish_figure(fig, path, plot_config)
 
 
-def plot_cumulative_performance(
+def plot_performance_and_drawdowns(
     daily: pl.DataFrame,
     path: Path,
     scenario_config: ScenarioConfig,
     plot_config: PlotConfig,
     mobile_layout: bool = False,
 ) -> None:
+    """Plot cumulative wealth and drawdowns in one aligned figure."""
+
     scenarios, labels, colors = _comparison_style(scenario_config, plot_config)
-    data = cumulative_returns(
-        daily.filter(pl.col("scenario").is_in(scenarios)), return_column="net_return"
+    filtered = daily.filter(pl.col("scenario").is_in(scenarios))
+    performance = cumulative_returns(filtered, return_column="net_return")
+    drawdowns = drawdown_series(filtered, return_column="net_return")
+    fig, axes = plt.subplots(
+        2,
+        1,
+        figsize=(7.0, 8.6) if mobile_layout else (9.0, 7.2),
+        sharex=True,
+        gridspec_kw={"height_ratios": [2.1, 1.0], "hspace": 0.08},
     )
-    fig, axis = plt.subplots(figsize=(7.0, 6.0) if mobile_layout else (9, 4.8))
+    wealth_axis, drawdown_axis = axes
     for scenario in scenarios:
-        part = data.filter(pl.col("scenario") == scenario).sort("date")
-        axis.plot(
-            part.get_column("date").to_list(),
-            part.get_column("wealth"),
+        wealth = performance.filter(pl.col("scenario") == scenario).sort("date")
+        wealth_axis.plot(
+            wealth.get_column("date").to_list(),
+            wealth.get_column("wealth"),
             label=labels[scenario],
             color=colors[scenario],
         )
-    axis.axhline(
+        drawdown = drawdowns.filter(pl.col("scenario") == scenario).sort("date")
+        dates = drawdown.get_column("date").to_list()
+        values = drawdown.get_column("drawdown") * 100
+        drawdown_axis.plot(dates, values, color=colors[scenario])
+        drawdown_axis.fill_between(
+            dates,
+            values,
+            0,
+            color=colors[scenario],
+            alpha=0.07,
+            linewidth=0,
+        )
+    wealth_axis.axhline(
         1,
         color=plot_config.zero_line_color,
         linewidth=0.8,
         linestyle=":",
     )
-    axis.set_yscale("log")
+    wealth_axis.set_yscale("log")
     wealth_min = require_finite_float(
-        data.get_column("wealth").min(), "minimum cumulative wealth"
+        performance.get_column("wealth").min(), "minimum cumulative wealth"
     )
     wealth_max = require_finite_float(
-        data.get_column("wealth").max(), "maximum cumulative wealth"
+        performance.get_column("wealth").max(), "maximum cumulative wealth"
     )
     candidate_ticks = (0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0)
-    visible_ticks = [
-        tick for tick in candidate_ticks if wealth_min * 0.9 <= tick <= wealth_max * 1.1
-    ]
-    axis.set_yticks(visible_ticks)
-    axis.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}×"))
-    axis.yaxis.set_minor_formatter(NullFormatter())
-    axis.set_ylabel("Wealth (base = 1, log scale)")
-    axis.legend(frameon=False)
-    _clean_axis(axis, plot_config)
-    _finish_figure(fig, path, plot_config)
+    wealth_axis.set_yticks(
+        [
+            tick
+            for tick in candidate_ticks
+            if wealth_min * 0.9 <= tick <= wealth_max * 1.1
+        ]
+    )
+    wealth_axis.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}×"))
+    wealth_axis.yaxis.set_minor_formatter(NullFormatter())
+    wealth_axis.yaxis.set_minor_locator(NullLocator())
+    wealth_axis.set_ylabel("Wealth (base = 1, log scale)")
+    wealth_axis.legend(frameon=False)
+    drawdown_axis.set_ylabel("Drawdown (%)")
+    drawdown_axis.set_xlabel("Date")
+    for axis in axes:
+        _clean_axis(axis, plot_config)
+    fig.subplots_adjust(left=0.09, right=0.99, bottom=0.09, top=0.98, hspace=0.08)
+    _finish_figure(fig, path, plot_config, tight_layout=False)
 
 
-def plot_drawdowns(
+def _compound_return_series(
+    frame: pl.DataFrame,
+    return_column: str,
+    *,
+    sign: float = 1.0,
+) -> pl.DataFrame:
+    return frame.sort("date").select(
+        "date",
+        (1.0 + sign * pl.col(return_column).fill_null(0.0)).cum_prod().alias("wealth"),
+    )
+
+
+def plot_dotcom_comparison(
     daily: pl.DataFrame,
     path: Path,
     scenario_config: ScenarioConfig,
     plot_config: PlotConfig,
     mobile_layout: bool = False,
 ) -> None:
-    scenarios, labels, colors = _comparison_style(scenario_config, plot_config)
-    data = drawdown_series(
-        daily.filter(pl.col("scenario").is_in(scenarios)), return_column="net_return"
+    """Compare the strategy, index, and individual legs around the drawdown."""
+
+    start = date(1998, 10, 8)
+    end = date(2003, 12, 31)
+    window = daily.filter(pl.col("date").is_between(start, end))
+    strategy = _compound_return_series(
+        window.filter(
+            pl.col("scenario") == scenario_config.volatility_scaled_long_short
+        ),
+        "net_return",
     )
-    fig, axis = plt.subplots(figsize=(7.0, 6.0) if mobile_layout else (9, 4.5))
-    for scenario in scenarios:
-        part = data.filter(pl.col("scenario") == scenario).sort("date")
-        maximum_drawdown = require_finite_float(
-            part.get_column("drawdown").min(), "maximum drawdown"
+    market = _compound_return_series(
+        window.select("date", "market_return").unique("date"),
+        "market_return",
+    )
+    long_leg = _compound_return_series(
+        window.filter(pl.col("scenario") == scenario_config.low_volatility_long),
+        "gross_return",
+    )
+    short_leg = _compound_return_series(
+        window.filter(pl.col("scenario") == scenario_config.high_volatility_long),
+        "gross_return",
+        sign=-1.0,
+    )
+    fig, axes = plt.subplots(
+        2,
+        1,
+        figsize=(7.0, 9.0) if mobile_layout else (9.0, 7.6),
+        sharex=True,
+        gridspec_kw={"height_ratios": [1.0, 1.0], "hspace": 0.16},
+    )
+    top_axis, legs_axis = axes
+    top_axis.plot(
+        strategy.get_column("date").to_list(),
+        strategy.get_column("wealth"),
+        label="Combined scaled L/S",
+        color=plot_config.volatility_scaled_color,
+    )
+    top_axis.plot(
+        market.get_column("date").to_list(),
+        market.get_column("wealth"),
+        label="Russell 1000",
+        color=plot_config.muted_text_color,
+    )
+    legs_axis.plot(
+        long_leg.get_column("date").to_list(),
+        long_leg.get_column("wealth"),
+        label="Low-vol long",
+        color=plot_config.low_volatility_color,
+    )
+    legs_axis.plot(
+        short_leg.get_column("date").to_list(),
+        short_leg.get_column("wealth"),
+        label="High-vol short",
+        color=plot_config.high_volatility_color,
+    )
+    for axis in axes:
+        axis.axhline(
+            1,
+            color=plot_config.zero_line_color,
+            linewidth=0.8,
+            linestyle=":",
         )
-        axis.plot(
-            part.get_column("date").to_list(),
-            part.get_column("drawdown") * 100,
-            label=f"{labels[scenario]} ({maximum_drawdown:.0%})",
-            color=colors[scenario],
-        )
-    axis.set_ylabel("Drawdown (%)")
-    axis.legend(frameon=False)
-    _clean_axis(axis, plot_config)
-    _finish_figure(fig, path, plot_config)
+        axis.set_ylabel("Relative wealth")
+        axis.legend(frameon=False, ncol=2)
+        _clean_axis(axis, plot_config)
+    legs_axis.set_xlabel("Date")
+    fig.subplots_adjust(left=0.09, right=0.99, bottom=0.09, top=0.98, hspace=0.16)
+    _finish_figure(fig, path, plot_config, tight_layout=False)
 
 
 def _comparison_style(
@@ -416,8 +515,9 @@ def _render_layout_pair(
 ) -> None:
     """Render one desktop/mobile pair with stable article filenames."""
 
-    renderer(path=figures / f"{stem}.png", mobile_layout=False)
-    renderer(path=figures / f"{stem}_mobile.png", mobile_layout=True)
+    for extension in ("png", "svg"):
+        renderer(path=figures / f"{stem}.{extension}", mobile_layout=False)
+        renderer(path=figures / f"{stem}_mobile.{extension}", mobile_layout=True)
 
 
 def render_article_figures(
@@ -462,14 +562,14 @@ def render_article_figures(
             beta_config=config.beta,
             plot_config=config.plots,
         ),
-        "cumulative_performance": partial(
-            plot_cumulative_performance,
+        "performance_and_drawdowns": partial(
+            plot_performance_and_drawdowns,
             stage_daily,
             scenario_config=config.scenarios,
             plot_config=config.plots,
         ),
-        "drawdowns": partial(
-            plot_drawdowns,
+        "dotcom_comparison": partial(
+            plot_dotcom_comparison,
             stage_daily,
             scenario_config=config.scenarios,
             plot_config=config.plots,

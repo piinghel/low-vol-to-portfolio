@@ -320,10 +320,16 @@ def run(
     figures = output / "figures"
     output.mkdir(parents=True, exist_ok=True)
     figures.mkdir(parents=True, exist_ok=True)
-    for obsolete_path in [
+    obsolete_paths = [
         output / "hedge_targets.csv",
         figures / "beta_hedge.png",
-    ]:
+    ]
+    for stem in ("cumulative_performance", "drawdowns"):
+        obsolete_paths.extend(
+            figures / f"{stem}{suffix}"
+            for suffix in (".png", "_mobile.png", ".svg", "_mobile.svg")
+        )
+    for obsolete_path in obsolete_paths:
         obsolete_path.unlink(missing_ok=True)
 
     _write_json(output / "config.json", asdict(config))

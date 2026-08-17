@@ -48,5 +48,5 @@ Missing held-stock returns are explicitly filled with zero and reported as a pos
 - `portfolio.py`: stage targets and exposures.
 - `backtest.py`: execution, fixed-quantity P&L, drifted turnover, and costs.
 - `metrics.py`: standard performance, exposure, and realized-beta metrics.
-- `plots.py`: deterministic article figures.
+- `plots.py`: deterministic article figures, emitted as SVG with PNG fallbacks.
 - `run.py`: one-command orchestration and artifacts.
