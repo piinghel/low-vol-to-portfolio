@@ -170,11 +170,3 @@ def build_investable_universe(
         )
         .sort([asset_col, date_col])
     )
-
-
-def load_investable_universe(config: DataConfig) -> pl.LazyFrame:
-    return build_investable_universe(
-        load_price_data(config),
-        load_constituent_data(config),
-        config,
-    )

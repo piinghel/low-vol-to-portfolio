@@ -34,7 +34,7 @@ The eleven tests cover point-in-time membership, the $5 unadjusted-price filter,
 - Weekly signal close, next-market-close execution, subsequent close-to-close return.
 - Sizing volatility: 60 market days; 20% stock target; 4% absolute position cap; 100% leg gross cap.
 - Beta diagnostic: trailing 252-day covariance estimate, minimum 126 observations.
-- No index hedge: the volatility-scaled stock portfolio is already approximately beta-neutral.
+- The backtest reports beta as a diagnostic; an optional index-futures overlay can offset it.
 - Costs: 5 bps per dollar of equity traded.
 
 Missing held-stock returns are explicitly filled with zero and reported as a position-day rate. A held-return quality gate fails the run above 300% absolute daily return.

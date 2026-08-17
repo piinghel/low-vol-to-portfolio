@@ -477,11 +477,11 @@ def main() -> None:
         "--output",
         type=Path,
         default=None,
-        help=("Output directory (default: <article-project>/output/latest)"),
+        help=("Output directory (default: <project-root>/output/latest)"),
     )
     args = parser.parse_args()
     repo_root = args.repo_root.expanduser().resolve()
-    article_project = Path(__file__).resolve().parent
+    article_project = Path(__file__).resolve().parents[1]
     data_root = (
         args.data_root.expanduser().resolve()
         if args.data_root is not None
