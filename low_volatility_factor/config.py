@@ -152,7 +152,7 @@ class PlotConfig:
     low_volatility_color: str = "#2F6F73"
     high_volatility_color: str = "#C45B52"
     naive_long_short_color: str = "#8A949E"
-    volatility_scaled_color: str = "#C9923E"
+    volatility_scaled_color: str = "#586A82"
     realized_beta_color: str = "#4D6D8A"
     text_color: str = "#2E3A45"
     muted_text_color: str = "#66737E"
