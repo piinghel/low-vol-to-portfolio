@@ -342,7 +342,26 @@ def run(
         config.data.unadjusted_price_column,
         config.data.total_return_column,
     )
-    market = prepare_index_returns(config.data).collect()
+    price_bounds = (
+        raw_prices.select(
+            pl.col(config.data.date_column).min().alias("first_price_date"),
+            pl.col(config.data.date_column).max().alias("last_price_date"),
+        )
+        .collect()
+        .row(0, named=True)
+    )
+    if any(value is None for value in price_bounds.values()):
+        raise ValueError("Price data contains no usable dates")
+    market = (
+        prepare_index_returns(config.data)
+        .filter(
+            pl.col(config.data.date_column).is_between(
+                price_bounds["first_price_date"],
+                price_bounds["last_price_date"],
+            )
+        )
+        .collect()
+    )
     prices = align_prices_to_market_calendar(raw_prices, market, config.data)
     constituents = load_constituent_data(config.data)
 
@@ -462,16 +481,13 @@ def run(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--repo-root",
-        type=Path,
-        default=Path(__file__).resolve().parents[3],
-        help="Repository root containing the input data directory",
-    )
-    parser.add_argument(
         "--data-root",
         type=Path,
         default=None,
-        help="Input data directory (default: <repo-root>/data)",
+        help=(
+            "Input export directory (default: "
+            "<Documents>/research_data/riy_backtest_data_20260818)"
+        ),
     )
     parser.add_argument(
         "--output",
@@ -480,12 +496,13 @@ def main() -> None:
         help=("Output directory (default: <project-root>/output/latest)"),
     )
     args = parser.parse_args()
-    repo_root = args.repo_root.expanduser().resolve()
     article_project = Path(__file__).resolve().parents[1]
     data_root = (
         args.data_root.expanduser().resolve()
         if args.data_root is not None
-        else repo_root / "data"
+        else Path(__file__).resolve().parents[3]
+        / "research_data"
+        / "riy_backtest_data_20260818"
     )
     output = (
         args.output.expanduser().resolve()

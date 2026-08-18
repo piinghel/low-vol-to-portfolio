@@ -9,9 +9,9 @@ from pathlib import Path
 @dataclass(frozen=True)
 class DataConfig:
     data_root: Path
-    price_glob: str = "price/riy_index_price_*.parquet"
-    constituents_glob: str = "constituents/riy_index_constituents_*.parquet"
-    index_glob: str = "index/riy_index_*.parquet"
+    price_glob: str = "data/prices.parquet"
+    constituents_glob: str = "data/constituents.parquet"
+    index_glob: str = "data/index.parquet"
     date_column: str = "date"
     asset_column: str = "asset_id_bb_global"
     adjusted_price_column: str = "px_last"

@@ -414,6 +414,62 @@ def _compound_return_series(
     )
 
 
+def _compound_leg_contribution(
+    combined: pl.DataFrame,
+    leg: pl.DataFrame,
+    leg_scenario: str,
+) -> pl.DataFrame:
+    """Express a leg's P&L on the combined portfolio capital base.
+
+    A separately compounded leg is a standalone portfolio. It cannot be added
+    to the other leg after a rebalance because both paths compound their own
+    capital. This function instead carries each leg's within-period P&L into
+    the combined portfolio NAV, making the two contribution paths additive.
+    """
+
+    combined_periods = combined.sort("date").with_columns(
+        (1.0 + pl.col("gross_return")).cum_prod().alias("combined_wealth")
+    )
+    period_starts = (
+        combined_periods.group_by("signal_date")
+        .agg(
+            pl.col("combined_wealth").first().alias("first_combined_wealth"),
+            pl.col("gross_return").first().alias("first_combined_return"),
+        )
+        .with_columns(
+            (
+                pl.col("first_combined_wealth")
+                / (1.0 + pl.col("first_combined_return"))
+            ).alias("period_start_wealth")
+        )
+        .select("signal_date", "period_start_wealth")
+    )
+    leg_periods = (
+        leg.filter(pl.col("scenario") == leg_scenario)
+        .sort("date")
+        .with_columns(
+            pl.col("portfolio_relative_value")
+            .shift(1)
+            .over("signal_date", order_by="date")
+            .fill_null(1.0)
+            .alias("previous_leg_value")
+        )
+        .with_columns(
+            (pl.col("portfolio_relative_value") - pl.col("previous_leg_value")).alias(
+                "leg_pnl"
+            )
+        )
+        .join(period_starts, on="signal_date", how="inner")
+        .sort("date")
+        .with_columns(
+            (1.0 + (pl.col("leg_pnl") * pl.col("period_start_wealth")).cum_sum()).alias(
+                "wealth"
+            )
+        )
+    )
+    return leg_periods.select("date", "wealth")
+
+
 def plot_dotcom_comparison(
     daily: pl.DataFrame,
     scaled_leg_daily: pl.DataFrame,
@@ -427,24 +483,27 @@ def plot_dotcom_comparison(
     start = date(1998, 10, 8)
     end = date(2003, 12, 31)
     window = daily.filter(pl.col("date").is_between(start, end))
+    combined_window = window.filter(
+        pl.col("scenario") == scenario_config.volatility_scaled_long_short
+    )
     strategy = _compound_return_series(
-        window.filter(
-            pl.col("scenario") == scenario_config.volatility_scaled_long_short
-        ),
-        "net_return",
+        combined_window,
+        "gross_return",
     )
     market = _compound_return_series(
         window.select("date", "market_return").unique("date"),
         "market_return",
     )
     leg_window = scaled_leg_daily.filter(pl.col("date").is_between(start, end))
-    long_leg = _compound_return_series(
-        leg_window.filter(pl.col("scenario") == "scaled_long_leg"),
-        "gross_return",
+    long_leg = _compound_leg_contribution(
+        combined_window,
+        leg_window,
+        "scaled_long_leg",
     )
-    short_leg = _compound_return_series(
-        leg_window.filter(pl.col("scenario") == "scaled_short_leg"),
-        "gross_return",
+    short_leg = _compound_leg_contribution(
+        combined_window,
+        leg_window,
+        "scaled_short_leg",
     )
     fig, axes = plt.subplots(
         2,
@@ -457,7 +516,7 @@ def plot_dotcom_comparison(
     top_axis.plot(
         strategy.get_column("date").to_list(),
         strategy.get_column("wealth"),
-        label="Combined scaled L/S",
+        label="Combined scaled L/S (gross)",
         color=plot_config.volatility_scaled_color,
     )
     top_axis.plot(
@@ -469,13 +528,13 @@ def plot_dotcom_comparison(
     legs_axis.plot(
         long_leg.get_column("date").to_list(),
         long_leg.get_column("wealth"),
-        label="Scaled low-vol long",
+        label="Low-vol long contribution",
         color=plot_config.low_volatility_color,
     )
     legs_axis.plot(
         short_leg.get_column("date").to_list(),
         short_leg.get_column("wealth"),
-        label="Scaled high-vol short",
+        label="High-vol short contribution",
         color=plot_config.high_volatility_color,
     )
     for axis in axes:

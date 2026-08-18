@@ -10,8 +10,13 @@ From this project’s root:
 
 ```bash
 uv sync --dev
-uv run low-vol-factor --data-root /path/to/research-data
+uv run low-vol-factor
 ```
+
+The current export lives in `Documents/research_data/riy_backtest_data_20260818/`
+and has the flat layout `data/prices.parquet`, `data/constituents.parquet`, and
+`data/index.parquet`. Pass `--data-root` to use another versioned export. The
+older segmented files remain available separately.
 
 Outputs are written to this project’s `output/latest/` directory. The run records its full configuration, input-file metadata, dependency versions, data-quality checks, targets, daily results, metrics, and figures.
 
@@ -28,7 +33,8 @@ The eleven tests cover point-in-time membership, the $5 unadjusted-price filter,
 
 ## Default specification
 
-- Point-in-time Russell 1000 constituents; minimum unadjusted price of $5.
+- Point-in-time Russell 1000 constituents joined by Bloomberg FIGI with a
+  monthly backward as-of match; minimum unadjusted price of $5.
 - Selection signal: mean annualized trailing volatility over 21, 63, and 126 market days.
 - Ten equal-count deciles; long decile 1 and short decile 10.
 - Weekly signal close, next-market-close execution, subsequent close-to-close return.
