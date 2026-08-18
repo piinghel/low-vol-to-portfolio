@@ -26,6 +26,8 @@ def _finish_figure(
     plot_config: PlotConfig,
     *,
     tight_layout: bool = True,
+    tick_label_size: float = 10.5,
+    axis_label_size: float = 11.5,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.patch.set_facecolor(plot_config.background_color)
@@ -33,14 +35,14 @@ def _finish_figure(
         axis.set_facecolor(plot_config.background_color)
         axis.tick_params(
             colors=plot_config.muted_text_color,
-            labelsize=10.5,
+            labelsize=tick_label_size,
             length=0,
             width=0,
         )
         axis.xaxis.label.set_color(plot_config.muted_text_color)
-        axis.xaxis.label.set_fontsize(11.5)
+        axis.xaxis.label.set_fontsize(axis_label_size)
         axis.yaxis.label.set_color(plot_config.muted_text_color)
-        axis.yaxis.label.set_fontsize(11.5)
+        axis.yaxis.label.set_fontsize(axis_label_size)
         axis.title.set_color(plot_config.text_color)
         axis.title.set_fontweight("bold")
         axis.title.set_fontsize(12)
@@ -593,19 +595,19 @@ def plot_regime_comparison(
         bbox_to_anchor=(0.5, 0.995),
         ncol=2 if mobile_layout else 4,
         frameon=False,
-        fontsize=9.5,
+        fontsize=10.0,
     )
     figure.supylabel(
         "Relative wealth",
         x=0.015,
         color=plot_config.muted_text_color,
-        fontsize=11.5,
+        fontsize=12.0,
     )
     figure.supxlabel(
         "Date",
         y=0.015,
         color=plot_config.muted_text_color,
-        fontsize=11.5,
+        fontsize=12.0,
     )
 
     figure.subplots_adjust(
@@ -616,7 +618,14 @@ def plot_regime_comparison(
         hspace=0.22,
         wspace=0.18,
     )
-    _finish_figure(figure, path, plot_config, tight_layout=False)
+    _finish_figure(
+        figure,
+        path,
+        plot_config,
+        tight_layout=False,
+        tick_label_size=11.5,
+        axis_label_size=12.0,
+    )
 
 
 def _comparison_style(
