@@ -10,7 +10,6 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import polars as pl
 from matplotlib.ticker import FuncFormatter, NullFormatter, NullLocator
@@ -216,10 +215,11 @@ def plot_naive_leg_risk(
         axis.bar_label(
             bars,
             fmt=label_format,
-            padding=5,
+            padding=3,
             color=plot_config.muted_text_color,
-            fontsize=9.5,
+            fontsize=8.5,
             fontweight="regular",
+            alpha=0.75,
         )
         axis.set_xlabel(title)
         axis.set_xlim(0, max(values) * 1.2)
@@ -429,60 +429,45 @@ def _compound_leg_contribution(
     """
 
     combined_periods = combined.sort("date").with_columns(
-        (1.0 + pl.col("gross_return")).cum_prod().alias("combined_wealth")
+        (1.0 + pl.col("gross_return")).cum_prod().alias("local_wealth")
     )
-    period_starts = (
-        combined_periods.group_by("signal_date")
-        .agg(
-            pl.col("combined_wealth").first().alias("first_combined_wealth"),
-            pl.col("gross_return").first().alias("first_combined_return"),
-        )
-        .with_columns(
-            (
-                pl.col("first_combined_wealth")
-                / (1.0 + pl.col("first_combined_return"))
-            ).alias("period_start_wealth")
-        )
-        .select("signal_date", "period_start_wealth")
+    combined_periods = combined_periods.with_columns(
+        pl.col("local_wealth").shift(1).fill_null(1.0).alias("previous_local_wealth")
     )
+    if "previous_gross_nav" in combined_periods.columns:
+        combined_periods = combined_periods.with_columns(
+            (pl.col("previous_local_wealth") / pl.col("previous_gross_nav")).alias(
+                "leg_scale"
+            )
+        )
+    else:
+        combined_periods = combined_periods.with_columns(pl.lit(1.0).alias("leg_scale"))
     leg_periods = (
         leg.filter(pl.col("scenario") == leg_scenario)
         .sort("date")
-        .with_columns(
-            pl.col("portfolio_relative_value")
-            .shift(1)
-            .over("signal_date", order_by="date")
-            .fill_null(1.0)
-            .alias("previous_leg_value")
-        )
-        .with_columns(
-            (pl.col("portfolio_relative_value") - pl.col("previous_leg_value")).alias(
-                "leg_pnl"
-            )
-        )
-        .join(period_starts, on="signal_date", how="inner")
+        .with_columns((pl.col("portfolio_relative_value") - 1.0).alias("leg_pnl"))
+        .join(combined_periods.select("date", "leg_scale"), on="date", how="inner")
         .sort("date")
         .with_columns(
-            (1.0 + (pl.col("leg_pnl") * pl.col("period_start_wealth")).cum_sum()).alias(
-                "wealth"
-            )
+            (1.0 + (pl.col("leg_pnl") * pl.col("leg_scale")).cum_sum()).alias("wealth")
         )
     )
     return leg_periods.select("date", "wealth")
 
 
-def plot_dotcom_comparison(
+def _plot_leg_comparison(
     daily: pl.DataFrame,
     scaled_leg_daily: pl.DataFrame,
     path: Path,
     scenario_config: ScenarioConfig,
     plot_config: PlotConfig,
     mobile_layout: bool = False,
+    *,
+    start: date,
+    end: date,
 ) -> None:
-    """Compare the strategy, index, and individual legs around the drawdown."""
+    """Plot the strategy, index, and individual legs for one regime window."""
 
-    start = date(1998, 10, 8)
-    end = date(2003, 12, 31)
     window = daily.filter(pl.col("date").is_between(start, end))
     combined_window = window.filter(
         pl.col("scenario") == scenario_config.volatility_scaled_long_short
@@ -553,108 +538,48 @@ def plot_dotcom_comparison(
     _finish_figure(fig, path, plot_config, tight_layout=False)
 
 
-def plot_regime_comparison(
+def plot_dotcom_comparison(
     daily: pl.DataFrame,
+    scaled_leg_daily: pl.DataFrame,
     path: Path,
     scenario_config: ScenarioConfig,
     plot_config: PlotConfig,
     mobile_layout: bool = False,
 ) -> None:
-    """Compare the scaled strategy with the market in two stress windows."""
+    """Plot the 1998–2003 drawdown window."""
 
-    windows = (
-        (date(1998, 10, 8), date(2000, 3, 9)),
-        (date(2025, 4, 3), date(2026, 5, 27)),
+    _plot_leg_comparison(
+        daily,
+        scaled_leg_daily,
+        path,
+        scenario_config,
+        plot_config,
+        mobile_layout,
+        start=date(1998, 10, 8),
+        end=date(2003, 12, 31),
     )
-    if mobile_layout:
-        fig, axes = plt.subplots(
-            2,
-            1,
-            figsize=(7.0, 7.2),
-            sharey=True,
-            gridspec_kw={"hspace": 0.18},
-        )
-    else:
-        fig, axes = plt.subplots(
-            1,
-            2,
-            figsize=(10.0, 4.5),
-            sharey=True,
-            gridspec_kw={"wspace": 0.08},
-        )
-    axes = list(axes)
-    series: list[tuple[pl.DataFrame, pl.DataFrame]] = []
 
-    for start, end in windows:
-        window = daily.filter(pl.col("date").is_between(start, end))
-        if window.is_empty():
-            raise ValueError(f"No daily observations found for {start}–{end}")
-        strategy_window = window.filter(
-            pl.col("scenario") == scenario_config.volatility_scaled_long_short
-        )
-        strategy = _compound_return_series(strategy_window, "gross_return")
-        market = _compound_return_series(
-            window.select("date", "market_return").unique("date"),
-            "market_return",
-        )
-        series.append((strategy, market))
 
-    for index, (axis, (strategy, market), (start, end)) in enumerate(
-        zip(axes, series, windows, strict=True)
-    ):
-        axis.plot(
-            strategy.get_column("date").to_list(),
-            strategy.get_column("wealth"),
-            label="Scaled low-volatility L/S (gross)",
-            color=plot_config.volatility_scaled_color,
-            linewidth=1.8,
-        )
-        axis.plot(
-            market.get_column("date").to_list(),
-            market.get_column("wealth"),
-            label="Russell 1000",
-            color=plot_config.low_volatility_color,
-            linewidth=1.8,
-        )
-        axis.axhline(
-            1,
-            color=plot_config.zero_line_color,
-            linewidth=0.8,
-            linestyle=":",
-        )
-        axis.set_xlim(start, end)
-        axis.set_xlabel("Date")
-        locator = mdates.AutoDateLocator(minticks=3, maxticks=5)
-        axis.xaxis.set_major_locator(locator)
-        axis.xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
-        _clean_axis(axis, plot_config)
-        axis.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.1f}×"))
-        if index == 0:
-            axis.set_ylabel("Wealth (base = 1)")
-        else:
-            axis.tick_params(axis="y", labelleft=False)
+def plot_recent_comparison(
+    daily: pl.DataFrame,
+    scaled_leg_daily: pl.DataFrame,
+    path: Path,
+    scenario_config: ScenarioConfig,
+    plot_config: PlotConfig,
+    mobile_layout: bool = False,
+) -> None:
+    """Plot the 2025–2026 window in the same stacked layout as Figure 7."""
 
-    handles, labels = axes[0].get_legend_handles_labels()
-    legend = fig.legend(
-        handles,
-        labels,
-        frameon=False,
-        ncol=2,
-        loc="upper center",
-        bbox_to_anchor=(0.5, 1.02),
+    _plot_leg_comparison(
+        daily,
+        scaled_leg_daily,
+        path,
+        scenario_config,
+        plot_config,
+        mobile_layout,
+        start=date(2025, 4, 3),
+        end=date(2026, 5, 27),
     )
-    for label in legend.get_texts():
-        label.set_color(plot_config.text_color)
-        label.set_fontsize(10.5)
-    fig.subplots_adjust(
-        left=0.08,
-        right=0.99,
-        bottom=0.14,
-        top=0.86,
-        hspace=0.18,
-        wspace=0.08,
-    )
-    _finish_figure(fig, path, plot_config, tight_layout=False)
 
 
 def _comparison_style(
@@ -751,8 +676,9 @@ def render_article_figures(
             plot_config=config.plots,
         ),
         "regime_comparison": partial(
-            plot_regime_comparison,
+            plot_recent_comparison,
             stage_daily,
+            scaled_leg_daily,
             scenario_config=config.scenarios,
             plot_config=config.plots,
         ),

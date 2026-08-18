@@ -1,10 +1,76 @@
-"""Transparent weekly target-weight backtest with explicit trading costs."""
+"""Transparent floating-weight backtest with explicit trading costs."""
 
 from __future__ import annotations
 
 import polars as pl
 
 from .config import BacktestConfig, CostConfig, DataConfig
+
+
+def prepare_held_returns(
+    targets: pl.DataFrame,
+    asset_returns: pl.DataFrame,
+    date_to_signal: pl.DataFrame,
+    data_config: DataConfig,
+) -> pl.DataFrame:
+    """Join returns to held positions and close trailing uncovered rows.
+
+    The source panel is sparse for some older securities. Missing dates inside
+    a security's observed life therefore carry a zero return; dates after its
+    last observation close the position, matching the package's delisting
+    convention.
+    """
+
+    date_col = data_config.date_column
+    asset_col = data_config.asset_column
+    return_col = data_config.total_return_column
+    held = (
+        date_to_signal.select(date_col, "signal_date")
+        .join(targets, on="signal_date")
+        .join(
+            asset_returns.select(date_col, asset_col, return_col),
+            on=[date_col, asset_col],
+            how="left",
+        )
+        .sort("scenario", "signal_date", asset_col, date_col)
+        .with_columns(
+            pl.when(pl.col(return_col).is_not_null())
+            .then(pl.col(date_col))
+            .otherwise(None)
+            .max()
+            .over(["scenario", "signal_date", asset_col])
+            .alias("last_covered_date")
+        )
+        .with_columns(
+            pl.when(pl.col(return_col).is_not_null())
+            .then(pl.col(date_col))
+            .otherwise(None)
+            .min()
+            .over(["scenario", "signal_date", asset_col])
+            .alias("first_covered_date")
+        )
+    )
+    prepared = (
+        held.filter(
+            pl.col("last_covered_date").is_not_null()
+            & (pl.col(date_col) >= pl.col("first_covered_date"))
+            & (pl.col(date_col) <= pl.col("last_covered_date"))
+        )
+        .drop("last_covered_date", "first_covered_date")
+        .with_columns(pl.col(return_col).fill_null(0.0))
+    )
+    invalid_returns = prepared.filter(pl.col(return_col) <= -1.0)
+    if not invalid_returns.is_empty():
+        offenders = invalid_returns.select(
+            date_col, "signal_date", "scenario", asset_col, return_col
+        ).head(10)
+        raise ValueError(
+            "Held positions contain returns at or below -100%; "
+            f"first offenders: {offenders.to_dicts()}"
+        )
+    return prepared.with_columns(
+        pl.lit(False).alias("missing_return"),
+    )
 
 
 def build_execution_schedule(
@@ -70,14 +136,8 @@ def _expand_stock_positions(
         target_frame = target_frame.with_columns(pl.lit(0.0).alias("stock_beta"))
 
     return (
-        date_to_signal.join(target_frame, on="signal_date", how="inner")
-        .join(
-            asset_returns.select(date_col, asset_col, return_col),
-            on=[date_col, asset_col],
-            how="left",
-        )
+        prepare_held_returns(target_frame, asset_returns, date_to_signal, data_config)
         .with_columns(
-            pl.col(return_col).is_null().alias("missing_return"),
             pl.col(return_col).fill_null(0.0),
         )
         .sort("scenario", "signal_date", asset_col, date_col)
@@ -88,10 +148,15 @@ def _expand_stock_positions(
             .alias("asset_growth")
         )
         .with_columns(
-            (pl.col("weight") * pl.col("asset_growth")).alias("market_value"),
-            (pl.col("weight") * (pl.col("asset_growth") - 1.0)).alias(
-                "pnl_since_rebalance"
-            ),
+            (pl.col("weight") * pl.col("asset_growth")).alias("floating_weight")
+        )
+        .with_columns(
+            (pl.col("floating_weight") / (1.0 + pl.col(return_col))).alias(
+                "start_of_day_weight"
+            )
+        )
+        .with_columns(
+            (pl.col("start_of_day_weight") * pl.col(return_col)).alias("daily_pnl")
         )
     )
 
@@ -102,7 +167,7 @@ def simulate_stock_targets(
     date_to_signal: pl.DataFrame,
     data_config: DataConfig,
 ) -> pl.DataFrame:
-    """Simulate fixed quantities between rebalances and expose weight drift."""
+    """Simulate floating weights between rebalances and expose their drift."""
 
     date_col = data_config.date_column
     expanded = _expand_stock_positions(
@@ -112,19 +177,18 @@ def simulate_stock_targets(
     daily = (
         expanded.group_by(date_col, "signal_date", "scenario")
         .agg(
-            (1.0 + pl.col("pnl_since_rebalance").sum()).alias(
-                "portfolio_relative_value"
-            ),
-            pl.col("market_value").abs().sum().alias("gross_market_value"),
-            pl.col("market_value").sum().alias("net_market_value"),
-            pl.col("market_value")
-            .filter(pl.col("market_value") > 0)
+            (1.0 + pl.col("daily_pnl").sum()).alias("portfolio_relative_value"),
+            pl.col("daily_pnl").sum().alias("gross_pnl"),
+            pl.col("floating_weight").abs().sum().alias("gross_market_value"),
+            pl.col("floating_weight").sum().alias("net_market_value"),
+            pl.col("floating_weight")
+            .filter(pl.col("floating_weight") > 0)
             .sum()
             .alias("long_market_value"),
-            (-pl.col("market_value").filter(pl.col("market_value") < 0).sum()).alias(
-                "short_market_value"
-            ),
-            (pl.col("market_value") * pl.col("stock_beta"))
+            (
+                -pl.col("floating_weight").filter(pl.col("floating_weight") < 0).sum()
+            ).alias("short_market_value"),
+            (pl.col("floating_weight") * pl.col("stock_beta"))
             .sum()
             .alias("beta_market_value"),
             pl.col("missing_return").sum().alias("missing_returns"),
@@ -132,34 +196,29 @@ def simulate_stock_targets(
         )
         .sort("scenario", date_col)
         .with_columns(
-            pl.col("portfolio_relative_value")
-            .shift(1)
-            .over(["scenario", "signal_date"], order_by=date_col)
-            .fill_null(1.0)
-            .alias("previous_relative_value")
+            pl.col("gross_pnl")
+            .cum_sum()
+            .over("scenario", order_by=date_col)
+            .alias("cumulative_gross_pnl")
         )
         .with_columns(
             (
-                pl.col("portfolio_relative_value") / pl.col("previous_relative_value")
-                - 1.0
-            ).alias("gross_return"),
-            (pl.col("gross_market_value") / pl.col("portfolio_relative_value")).alias(
-                "gross_exposure"
-            ),
-            (pl.col("net_market_value") / pl.col("portfolio_relative_value")).alias(
-                "net_exposure"
-            ),
-            (pl.col("long_market_value") / pl.col("portfolio_relative_value")).alias(
-                "long_exposure"
-            ),
-            (pl.col("short_market_value") / pl.col("portfolio_relative_value")).alias(
-                "short_exposure"
-            ),
-            (pl.col("beta_market_value") / pl.col("portfolio_relative_value")).alias(
-                "stock_beta"
-            ),
+                1.0
+                + pl.col("cumulative_gross_pnl")
+                .shift(1)
+                .over("scenario")
+                .fill_null(0.0)
+            ).alias("previous_gross_nav")
         )
-        .drop("previous_relative_value")
+        .with_columns(
+            (pl.col("gross_pnl") / pl.col("previous_gross_nav")).alias("gross_return"),
+            pl.col("gross_market_value").alias("gross_exposure"),
+            pl.col("net_market_value").alias("net_exposure"),
+            pl.col("long_market_value").alias("long_exposure"),
+            pl.col("short_market_value").alias("short_exposure"),
+            pl.col("beta_market_value").alias("stock_beta"),
+        )
+        .drop("cumulative_gross_pnl")
         .join(date_to_signal.select(date_col, "market_return"), on=date_col, how="left")
     )
     return daily
@@ -171,7 +230,7 @@ def compute_realized_turnover(
     date_to_signal: pl.DataFrame,
     data_config: DataConfig,
 ) -> pl.DataFrame:
-    """Compare new targets with drifted holdings at each execution close."""
+    """Compare new targets with outgoing floating weights at each rebalance."""
 
     asset_col = data_config.asset_column
     date_col = data_config.date_column
@@ -184,17 +243,7 @@ def compute_realized_turnover(
     ending_holdings = (
         expanded.join(period_ends, on=["scenario", "signal_date"], how="inner")
         .filter(pl.col(date_col) == pl.col("period_end_date"))
-        .with_columns(
-            (
-                1.0
-                + pl.col("pnl_since_rebalance").sum().over(["scenario", "signal_date"])
-            ).alias("ending_portfolio_value")
-        )
-        .with_columns(
-            (pl.col("market_value") / pl.col("ending_portfolio_value")).alias(
-                "old_weight"
-            )
-        )
+        .with_columns(pl.col("floating_weight").alias("old_weight"))
     )
     next_signals = (
         targets.select("scenario", "signal_date")
@@ -271,8 +320,25 @@ def apply_transaction_costs(
             pl.col("equity_turnover").fill_null(0.0),
             pl.col("equity_cost").fill_null(0.0),
         )
+        .with_columns((pl.col("gross_pnl") - pl.col("equity_cost")).alias("net_pnl"))
         .with_columns(
-            (pl.col("gross_return") - pl.col("equity_cost")).alias("net_return")
+            pl.col("net_pnl")
+            .cum_sum()
+            .over("scenario", order_by="date")
+            .alias("cumulative_net_pnl")
         )
+        .with_columns(
+            (
+                pl.col("net_pnl")
+                / (
+                    1.0
+                    + pl.col("cumulative_net_pnl")
+                    .shift(1)
+                    .over("scenario")
+                    .fill_null(0.0)
+                )
+            ).alias("net_return")
+        )
+        .drop("cumulative_net_pnl")
         .sort("scenario", "date")
     )

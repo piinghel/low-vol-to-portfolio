@@ -15,17 +15,17 @@ from .config import (
 from .frames import Frame, as_lazy, require_columns
 
 
-def select_weekly_signal_dates(
+def select_rebalance_signal_dates(
     dates: Frame,
     data_config: DataConfig,
     backtest_config: BacktestConfig,
 ) -> pl.DataFrame:
-    """Select the first trading date on or after the requested weekday each week."""
+    """Select every Nth trading week on or after the requested weekday."""
 
     date_col = data_config.date_column
     frame = as_lazy(dates)
     require_columns(frame, [date_col], "dates")
-    return (
+    candidate_dates = (
         frame.select(date_col)
         .unique()
         .with_columns(
@@ -38,6 +38,11 @@ def select_weekly_signal_dates(
         .sort(date_col)
         .select(date_col)
         .collect()
+    )
+    return (
+        candidate_dates.with_row_index("week_index")
+        .filter(pl.col("week_index") % backtest_config.rebalance_interval_weeks == 0)
+        .select(date_col)
     )
 
 

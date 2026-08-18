@@ -23,7 +23,12 @@ def test_leg_contributions_add_to_combined_gross_wealth() -> None:
                 date(2024, 1, 4),
                 date(2024, 1, 4),
             ],
-            "gross_return": [0.10, 1.2 / 1.1 - 1.0, 0.05, 1.32 / 1.26 - 1.0],
+            "gross_return": [
+                0.10,
+                1.2 / 1.1 - 1.0,
+                1.25 / 1.2 - 1.0,
+                1.30 / 1.25 - 1.0,
+            ],
         }
     )
     legs = pl.DataFrame(
@@ -45,13 +50,13 @@ def test_leg_contributions_add_to_combined_gross_wealth() -> None:
             "scenario": ["long"] * 4 + ["short"] * 4,
             "portfolio_relative_value": [
                 1.06,
-                1.10,
-                1.02,
-                1.05,
                 1.04,
-                1.10,
+                1.02,
                 1.03,
-                1.05,
+                1.04,
+                1.06,
+                1.03,
+                1.02,
             ],
         }
     )

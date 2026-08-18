@@ -29,7 +29,7 @@ uv run ty check .
 uv run python -m unittest discover -s tests -v
 ```
 
-The test suite covers point-in-time membership, the $5 unadjusted-price filter, causal signal timing, deterministic deciles, the 4% weight cap and unnormalized short leg, fixed-quantity long/short P&L, turnover against drifted pre-trade weights, leg-contribution additivity, and degenerate beta inputs.
+The test suite covers point-in-time membership, the $5 unadjusted-price filter, causal signal timing, deterministic deciles, the 4% weight cap and unnormalized short leg, floating-weight long/short P&L, turnover against drifted pre-trade weights, leg-contribution additivity, and degenerate beta inputs.
 
 ## Default specification
 
@@ -37,13 +37,13 @@ The test suite covers point-in-time membership, the $5 unadjusted-price filter, 
   monthly backward as-of match; minimum unadjusted price of $5.
 - Selection signal: mean annualized trailing volatility over 21, 63, and 126 market days.
 - Ten equal-count deciles; long decile 1 and short decile 10.
-- Weekly signal close, next-market-close execution, subsequent close-to-close return.
+- Three-week signal close, next-market-close execution, subsequent close-to-close return.
 - Sizing volatility: 60 market days; 20% stock target; 4% absolute position cap; 100% leg gross cap.
 - Beta diagnostic: trailing 252-day covariance estimate, minimum 126 observations.
 - The backtest reports beta as a diagnostic; an optional index-futures overlay can offset it.
 - Costs: 5 bps per dollar of equity traded.
 
-Missing held-stock returns are explicitly filled with zero and reported as a position-day rate. A held-return quality gate fails the run above 300% absolute daily return.
+Missing dates inside a security's observed history carry zero return; trailing dates close the position at its last covered observation. Held-return quality is persisted as an audit table, while returns at or below -100% stop the run.
 
 ## Modules
 
@@ -52,7 +52,7 @@ Missing held-stock returns are explicitly filled with zero and reported as a pos
 - `signals.py`: causal volatility features and deciles.
 - `risk.py`: trailing stock-beta diagnostic.
 - `portfolio.py`: stage targets and exposures.
-- `backtest.py`: execution, fixed-quantity P&L, drifted turnover, and costs.
+- `backtest.py`: execution, floating-weight P&L, drifted turnover, and costs.
 - `metrics.py`: standard performance, exposure, and realized-beta metrics.
 - `plots.py`: deterministic article figures, emitted as SVG with PNG fallbacks.
 - `run.py`: one-command orchestration and artifacts.

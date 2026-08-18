@@ -19,7 +19,7 @@ class DataConfig:
     total_return_column: str = "total_return"
     index_price_column: str = "px_last"
     minimum_unadjusted_price: float = 5.0
-    maximum_held_absolute_daily_return: float = 3.0
+    maximum_held_absolute_daily_return: float | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -27,7 +27,10 @@ class DataConfig:
         )
         if self.minimum_unadjusted_price < 0:
             raise ValueError("minimum_unadjusted_price must be non-negative")
-        if self.maximum_held_absolute_daily_return <= 0:
+        if (
+            self.maximum_held_absolute_daily_return is not None
+            and self.maximum_held_absolute_daily_return <= 0
+        ):
             raise ValueError("maximum_held_absolute_daily_return must be positive")
 
 
@@ -119,12 +122,15 @@ class BetaConfig:
 class BacktestConfig:
     # ISO weekday: Monday=1. On holidays, use the first trading day of the week.
     rebalance_weekday: int = 1
+    rebalance_interval_weeks: int = 3
     execution_delay_trading_days: int = 1
     annualization_factor: int = 252
 
     def __post_init__(self) -> None:
         if not 1 <= self.rebalance_weekday <= 5:
             raise ValueError("rebalance_weekday must be between 1 and 5")
+        if self.rebalance_interval_weeks < 1:
+            raise ValueError("rebalance_interval_weeks must be positive")
         if self.execution_delay_trading_days < 0:
             raise ValueError("execution_delay_trading_days must be non-negative")
         if self.annualization_factor <= 0:

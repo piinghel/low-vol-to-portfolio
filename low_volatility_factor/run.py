@@ -20,6 +20,7 @@ from .backtest import (
     build_execution_schedule,
     compute_realized_turnover,
     map_dates_to_signal_periods,
+    prepare_held_returns,
     simulate_stock_targets,
 )
 from .config import DataConfig, ResearchConfig
@@ -37,7 +38,7 @@ from .plots import render_article_figures
 from .portfolio import (
     build_decile_targets,
     build_stage_targets,
-    select_weekly_signal_dates,
+    select_rebalance_signal_dates,
     summarize_target_exposures,
 )
 from .risk import compute_trailing_market_beta
@@ -138,7 +139,7 @@ def _build_signal_snapshots(
     market: pl.DataFrame,
     config: ResearchConfig,
 ) -> pl.DataFrame:
-    """Build complete point-in-time weekly signal cross-sections."""
+    """Build complete point-in-time signal cross-sections at each rebalance."""
 
     features = compute_selection_volatility(prices, config.data, config.signal)
     features = compute_sizing_volatility(
@@ -159,7 +160,7 @@ def _build_signal_snapshots(
         constituents,
         config.data,
     )
-    signal_dates = select_weekly_signal_dates(market, config.data, config.backtest)
+    signal_dates = select_rebalance_signal_dates(market, config.data, config.backtest)
     snapshots = (
         universe.join(signal_dates.lazy(), on=config.data.date_column, how="inner")
         .select(
@@ -193,7 +194,7 @@ def _summarize_sample(
     signal_snapshots: pl.DataFrame,
     config: ResearchConfig,
 ) -> tuple[pl.DataFrame, pl.DataFrame]:
-    """Return weekly universe sizes and their persisted summary table."""
+    """Return rebalance universe sizes and their persisted summary table."""
 
     date_column = config.data.date_column
     asset_column = config.data.asset_column
@@ -207,11 +208,11 @@ def _summarize_sample(
     summary = {
         "first_signal_date": signal_snapshots.get_column(date_column).min(),
         "last_signal_date": signal_snapshots.get_column(date_column).max(),
-        "weekly_signal_dates": signal_snapshots.get_column(date_column).n_unique(),
+        "rebalance_dates": signal_snapshots.get_column(date_column).n_unique(),
         "unique_eligible_stocks": signal_snapshots.get_column(asset_column).n_unique(),
-        "minimum_weekly_cross_section": counts.min(),
-        "median_weekly_cross_section": counts.median(),
-        "maximum_weekly_cross_section": counts.max(),
+        "minimum_rebalance_cross_section": counts.min(),
+        "median_rebalance_cross_section": counts.median(),
+        "maximum_rebalance_cross_section": counts.max(),
     }
     summary_table = pl.DataFrame(
         [{"metric": key, "value": str(value)} for key, value in summary.items()]
@@ -258,17 +259,14 @@ def _collect_held_return_quality(
 ) -> pl.DataFrame:
     """Summarize and enforce return quality for assets actually held."""
 
-    date_column = config.data.date_column
-    asset_column = config.data.asset_column
     return_column = config.data.total_return_column
     quality = (
-        date_to_signal.select(date_column, "signal_date")
-        .join(
-            stage_targets.select("signal_date", "scenario", asset_column),
-            on="signal_date",
-            how="inner",
+        prepare_held_returns(
+            stage_targets,
+            asset_returns,
+            date_to_signal,
+            config.data,
         )
-        .join(asset_returns, on=[date_column, asset_column], how="left")
         .group_by("scenario")
         .agg(
             pl.len().alias("position_return_observations"),
@@ -284,7 +282,8 @@ def _collect_held_return_quality(
     maximum_held_return = require_finite_float(
         maximum_value, "maximum absolute held return"
     )
-    if maximum_held_return > config.data.maximum_held_absolute_daily_return:
+    threshold = config.data.maximum_held_absolute_daily_return
+    if threshold is not None and maximum_held_return > threshold:
         raise RuntimeError(
             "Held-return quality gate failed: maximum absolute return "
             f"{maximum_held_return:.2%} exceeds "
@@ -457,6 +456,7 @@ def run(
     target_exposures.write_csv(output / "target_exposures.csv")
     schedule.write_csv(output / "execution_schedule.csv")
     stage_daily.write_parquet(output / "daily_stage_results.parquet")
+    scaled_leg_daily.write_parquet(output / "daily_scaled_leg_results.parquet")
     stage_metrics.write_csv(output / "stage_metrics.csv")
     stage_metrics.write_parquet(output / "stage_metrics.parquet")
     decile_metrics.write_csv(output / "decile_metrics.csv")
