@@ -10,6 +10,7 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import polars as pl
 from matplotlib.ticker import FuncFormatter, MaxNLocator, NullFormatter, NullLocator
@@ -573,13 +574,17 @@ def plot_regime_comparison(
             axis.yaxis.set_major_locator(MaxNLocator(nbins=4))
             axis.yaxis.set_major_formatter(wealth_formatter)
             _clean_axis(axis, plot_config)
+        if row == 1:
+            for axis in (combined_axis, legs_axis):
+                axis.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
+                axis.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
         if row == 0:
             combined_handles, combined_labels = combined_axis.get_legend_handles_labels()
             legs_handles, legs_labels = legs_axis.get_legend_handles_labels()
             legend_handles = combined_handles + legs_handles
             legend_labels = combined_labels + legs_labels
         else:
-            combined_axis.tick_params(axis="x", labelbottom=False)
+            combined_axis.tick_params(axis="x", labelbottom=True)
 
     figure.legend(
         legend_handles,
