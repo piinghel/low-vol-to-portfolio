@@ -401,7 +401,6 @@ def plot_performance_and_drawdowns(
     wealth_axis.set_ylabel("Wealth (base = 1, log scale)")
     wealth_axis.legend(frameon=False)
     drawdown_axis.set_ylabel("Drawdown (%)")
-    drawdown_axis.set_xlabel("Date")
     for axis in axes:
         _clean_axis(axis, plot_config)
     fig.subplots_adjust(left=0.09, right=0.99, bottom=0.09, top=0.98, hspace=0.08)
@@ -579,7 +578,9 @@ def plot_regime_comparison(
                 axis.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
                 axis.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
         if row == 0:
-            strategy_handles, strategy_labels = strategy_axis.get_legend_handles_labels()
+            strategy_handles, strategy_labels = (
+                strategy_axis.get_legend_handles_labels()
+            )
             legs_handles, legs_labels = legs_axis.get_legend_handles_labels()
             legend_handles = strategy_handles + legs_handles
             legend_labels = strategy_labels + legs_labels
@@ -601,13 +602,6 @@ def plot_regime_comparison(
         color=plot_config.muted_text_color,
         fontsize=12.0,
     )
-    figure.supxlabel(
-        "Date",
-        y=0.015,
-        color=plot_config.muted_text_color,
-        fontsize=12.0,
-    )
-
     figure.subplots_adjust(
         left=0.08,
         right=0.99,

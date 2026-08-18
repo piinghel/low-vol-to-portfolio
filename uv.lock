@@ -523,7 +523,6 @@ dependencies = [
     { name = "ml-ranking-portfolio-management" },
     { name = "ml-ranking-tranching-pnl" },
     { name = "numpy" },
-    { name = "plotly" },
     { name = "polars" },
 ]
 
@@ -537,12 +536,11 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "matplotlib", specifier = ">=3.9" },
-    { name = "ml-ranking-colschema", directory = "../../ml_ranking_engine_20260817/packages/colschema" },
-    { name = "ml-ranking-features", directory = "../../ml_ranking_engine_20260817/packages/features" },
-    { name = "ml-ranking-portfolio-management", directory = "../../ml_ranking_engine_20260817/packages/portfolio_management" },
-    { name = "ml-ranking-tranching-pnl", directory = "../../ml_ranking_engine_20260817/packages/tranching_pnl" },
+    { name = "ml-ranking-colschema", directory = "../../packages/colschema" },
+    { name = "ml-ranking-features", directory = "../../packages/features" },
+    { name = "ml-ranking-portfolio-management", directory = "../../packages/portfolio_management" },
+    { name = "ml-ranking-tranching-pnl", directory = "../../packages/tranching_pnl" },
     { name = "numpy", specifier = ">=2.0" },
-    { name = "plotly", specifier = ">=6.0" },
     { name = "polars", specifier = ">=1.43" },
 ]
 
@@ -673,7 +671,7 @@ wheels = [
 [[package]]
 name = "ml-ranking-colschema"
 version = "0.3.0"
-source = { directory = "../../ml_ranking_engine_20260817/packages/colschema" }
+source = { directory = "../../packages/colschema" }
 dependencies = [
     { name = "omegaconf" },
     { name = "polars" },
@@ -691,7 +689,7 @@ provides-extras = ["dev"]
 [[package]]
 name = "ml-ranking-features"
 version = "0.3.9"
-source = { directory = "../../ml_ranking_engine_20260817/packages/features" }
+source = { directory = "../../packages/features" }
 dependencies = [
     { name = "fastexcel" },
     { name = "hydra-core" },
@@ -729,7 +727,7 @@ provides-extras = ["dev"]
 [[package]]
 name = "ml-ranking-portfolio-management"
 version = "0.4.0"
-source = { directory = "../../ml_ranking_engine_20260817/packages/portfolio_management" }
+source = { directory = "../../packages/portfolio_management" }
 dependencies = [
     { name = "cvxpy" },
     { name = "dataframely" },
@@ -760,7 +758,7 @@ provides-extras = ["dev"]
 [[package]]
 name = "ml-ranking-tranching-pnl"
 version = "0.1.0"
-source = { directory = "../../ml_ranking_engine_20260817/packages/tranching_pnl" }
+source = { directory = "../../packages/tranching_pnl" }
 dependencies = [
     { name = "dataframely" },
     { name = "hydra-core" },

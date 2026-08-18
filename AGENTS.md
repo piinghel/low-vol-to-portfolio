@@ -18,6 +18,7 @@ portfolio-construction article.
   than hand-edited source.
 - Keep article figures minimal and free of embedded titles. Use subtle grids
   and consistent colors across related plots.
+- Let date-formatted ticks communicate time; omit generic `Date` x-axis labels.
 - Figure 4 must show realized floating exposure. Figure 7 is one 2-by-2 regime
   figure with a single caption; do not restore a separate Figure 8.
 - Prefer small, explicit changes over speculative abstractions.

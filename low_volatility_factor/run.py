@@ -468,7 +468,7 @@ def main() -> None:
         default=None,
         help=(
             "Input export directory (default: "
-            "<Documents>/research_data/riy_backtest_data_20260818)"
+            "<Documents>/quant_research/data/riy_backtest_data_20260818)"
         ),
     )
     parser.add_argument(
@@ -482,9 +482,7 @@ def main() -> None:
     data_root = (
         args.data_root.expanduser().resolve()
         if args.data_root is not None
-        else Path(__file__).resolve().parents[3]
-        / "research_data"
-        / "riy_backtest_data_20260818"
+        else Path(__file__).resolve().parents[3] / "data" / "riy_backtest_data_20260818"
     )
     output = (
         args.output.expanduser().resolve()

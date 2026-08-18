@@ -13,7 +13,8 @@ uv sync --dev
 uv run low-vol-factor
 ```
 
-The current export lives in `Documents/research_data/riy_backtest_data_20260818/`
+The current export lives in
+`Documents/quant_research/data/riy_backtest_data_20260818/`.
 and has the flat layout `data/prices.parquet`, `data/constituents.parquet`, and
 `data/index.parquet`. Pass `--data-root` to use another versioned export. The
 older segmented files remain available separately.

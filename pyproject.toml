@@ -11,7 +11,6 @@ requires-python = ">=3.12"
 dependencies = [
     "matplotlib>=3.9",
     "numpy>=2.0",
-    "plotly>=6.0",
     "polars>=1.43",
     "ml-ranking-colschema",
     "ml-ranking-features",
@@ -26,10 +25,10 @@ dev = ["pytest>=8.3", "ruff==0.16.0", "ty==0.0.72"]
 low-vol-factor = "low_volatility_factor.run:main"
 
 [tool.uv.sources]
-ml-ranking-colschema = { path = "../../ml_ranking_engine_20260817/packages/colschema" }
-ml-ranking-features = { path = "../../ml_ranking_engine_20260817/packages/features" }
-ml-ranking-portfolio-management = { path = "../../ml_ranking_engine_20260817/packages/portfolio_management" }
-ml-ranking-tranching-pnl = { path = "../../ml_ranking_engine_20260817/packages/tranching_pnl" }
+ml-ranking-colschema = { path = "../../packages/colschema" }
+ml-ranking-features = { path = "../../packages/features" }
+ml-ranking-portfolio-management = { path = "../../packages/portfolio_management" }
+ml-ranking-tranching-pnl = { path = "../../packages/tranching_pnl" }
 
 [tool.setuptools]
 packages = ["low_volatility_factor"]
