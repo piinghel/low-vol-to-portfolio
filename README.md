@@ -26,10 +26,10 @@ Run the deliberately small correctness suite with:
 uv run ruff check .
 uv run ruff format --check .
 uv run ty check .
-uv run python -m unittest discover -s tests -v
+uv run python -m pytest -q
 ```
 
-The test suite covers point-in-time membership, the $5 unadjusted-price filter, causal signal timing, deterministic deciles, the 4% weight cap and unnormalized short leg, floating-weight long/short P&L, turnover against drifted pre-trade weights, leg-contribution additivity, and degenerate beta inputs.
+The test suite covers point-in-time membership, the $5 unadjusted-price filter, causal signal timing, deterministic deciles, the 4% weight cap and unnormalized short leg, the shared package's fixed-notional P&L/turnover/cost path, leg-contribution additivity, and degenerate beta inputs.
 
 ## Default specification
 
@@ -52,7 +52,7 @@ Missing dates inside a security's observed history carry zero return; trailing d
 - `signals.py`: causal volatility features and deciles.
 - `risk.py`: trailing stock-beta diagnostic.
 - `portfolio.py`: stage targets and exposures.
-- `backtest.py`: execution, floating-weight P&L, drifted turnover, and costs.
+- `backtest.py`: effective holdings and execution rows for the shared P&L package.
 - `metrics.py`: standard performance, exposure, and realized-beta metrics.
 - `plots.py`: deterministic article figures, emitted as SVG with PNG fallbacks.
 - `run.py`: one-command orchestration and artifacts.

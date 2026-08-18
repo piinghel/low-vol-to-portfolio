@@ -1,4 +1,4 @@
-from __future__ import annotations
+"""Invariant for the additive leg-contribution chart."""
 
 from datetime import date
 
@@ -8,56 +8,14 @@ import pytest
 from low_volatility_factor.plots import _compound_leg_contribution
 
 
-def test_leg_contributions_add_to_combined_gross_wealth() -> None:
-    combined = pl.DataFrame(
-        {
-            "date": [
-                date(2024, 1, 3),
-                date(2024, 1, 4),
-                date(2024, 1, 5),
-                date(2024, 1, 8),
-            ],
-            "signal_date": [
-                date(2024, 1, 2),
-                date(2024, 1, 2),
-                date(2024, 1, 4),
-                date(2024, 1, 4),
-            ],
-            "gross_return": [
-                0.10,
-                1.2 / 1.1 - 1.0,
-                1.25 / 1.2 - 1.0,
-                1.30 / 1.25 - 1.0,
-            ],
-        }
-    )
+def test_leg_contributions_add_to_compounded_combined_wealth() -> None:
+    dates = [date(2024, 1, 3), date(2024, 1, 4)]
+    combined = pl.DataFrame({"date": dates, "gross_return": [0.10, 0.20]})
     legs = pl.DataFrame(
         {
-            "date": [
-                date(2024, 1, 3),
-                date(2024, 1, 4),
-                date(2024, 1, 5),
-                date(2024, 1, 8),
-            ]
-            * 2,
-            "signal_date": [
-                date(2024, 1, 2),
-                date(2024, 1, 2),
-                date(2024, 1, 4),
-                date(2024, 1, 4),
-            ]
-            * 2,
-            "scenario": ["long"] * 4 + ["short"] * 4,
-            "portfolio_relative_value": [
-                1.06,
-                1.04,
-                1.02,
-                1.03,
-                1.04,
-                1.06,
-                1.03,
-                1.02,
-            ],
+            "date": dates * 2,
+            "scenario": ["long", "long", "short", "short"],
+            "portfolio_relative_value": [1.06, 1.12, 1.04, 1.08],
         }
     )
 

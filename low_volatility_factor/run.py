@@ -16,9 +16,7 @@ import numpy as np
 import polars as pl
 
 from .backtest import (
-    apply_transaction_costs,
     build_execution_schedule,
-    compute_realized_turnover,
     map_dates_to_signal_periods,
     prepare_held_returns,
     simulate_stock_targets,
@@ -220,13 +218,13 @@ def _summarize_sample(
     return snapshot_sizes, summary_table
 
 
-def _select_asset_returns(
+def _select_asset_prices(
     prices: pl.LazyFrame,
     stage_targets: pl.DataFrame,
     decile_targets: pl.DataFrame,
     config: ResearchConfig,
 ) -> pl.DataFrame:
-    """Collect returns only for assets used by at least one target portfolio."""
+    """Collect adjusted prices and vendor returns for targeted assets."""
 
     asset_column = config.data.asset_column
     target_assets = (
@@ -245,6 +243,7 @@ def _select_asset_returns(
         .select(
             config.data.date_column,
             asset_column,
+            config.data.adjusted_price_column,
             config.data.total_return_column,
         )
         .collect(engine="streaming")
@@ -292,25 +291,6 @@ def _collect_held_return_quality(
     return quality
 
 
-def _summarize_missing_returns(stage_daily: pl.DataFrame) -> pl.DataFrame:
-    return (
-        stage_daily.group_by("scenario")
-        .agg(
-            pl.col("missing_returns").sum().alias("missing_asset_returns"),
-            pl.col("position_return_observations")
-            .sum()
-            .alias("position_return_observations"),
-            pl.len().alias("daily_observations"),
-        )
-        .with_columns(
-            (
-                pl.col("missing_asset_returns") / pl.col("position_return_observations")
-            ).alias("missing_return_rate")
-        )
-        .sort("scenario")
-    )
-
-
 def run(
     config: ResearchConfig,
     output_directory: Path,
@@ -321,9 +301,10 @@ def run(
     figures.mkdir(parents=True, exist_ok=True)
     obsolete_paths = [
         output / "hedge_targets.csv",
+        output / "missing_returns.csv",
         figures / "beta_hedge.png",
     ]
-    for stem in ("cumulative_performance", "drawdowns"):
+    for stem in ("cumulative_performance", "drawdowns", "dotcom_comparison"):
         obsolete_paths.extend(
             figures / f"{stem}{suffix}"
             for suffix in (".png", "_mobile.png", ".svg", "_mobile.svg")
@@ -399,7 +380,7 @@ def run(
     )
     date_to_signal = map_dates_to_signal_periods(schedule, market, config.data)
 
-    asset_returns = _select_asset_returns(
+    asset_prices = _select_asset_prices(
         prices,
         stage_targets,
         decile_targets,
@@ -408,21 +389,17 @@ def run(
     held_return_quality = _collect_held_return_quality(
         date_to_signal,
         stage_targets,
-        asset_returns,
+        asset_prices,
         config,
     )
     held_return_quality.write_csv(output / "held_return_quality.csv")
 
-    stock_daily = simulate_stock_targets(
-        stage_targets, asset_returns, date_to_signal, config.data
-    )
-    target_turnover = compute_realized_turnover(
-        stage_targets, asset_returns, date_to_signal, config.data
-    )
-    stage_daily = apply_transaction_costs(
-        stock_daily,
-        target_turnover,
+    stage_daily = simulate_stock_targets(
+        stage_targets,
+        asset_prices,
+        date_to_signal,
         schedule,
+        config.data,
         config.costs,
     )
     scaled_leg_targets = stage_targets.filter(
@@ -435,13 +412,21 @@ def run(
     )
     scaled_leg_daily = simulate_stock_targets(
         scaled_leg_targets,
-        asset_returns,
+        asset_prices,
         date_to_signal,
+        schedule,
         config.data,
+        config.costs,
     )
 
+    decile_targets = decile_targets.with_columns(pl.lit(0.0).alias("stock_beta"))
     decile_daily = simulate_stock_targets(
-        decile_targets, asset_returns, date_to_signal, config.data
+        decile_targets,
+        asset_prices,
+        date_to_signal,
+        schedule,
+        config.data,
+        config.costs,
     )
     decile_metrics = compute_simple_metrics(
         decile_daily,
@@ -461,14 +446,11 @@ def run(
     stage_metrics.write_parquet(output / "stage_metrics.parquet")
     decile_metrics.write_csv(output / "decile_metrics.csv")
 
-    _summarize_missing_returns(stage_daily).write_csv(output / "missing_returns.csv")
-
     render_article_figures(
         figures,
         snapshot_sizes=snapshot_sizes,
         decile_metrics=decile_metrics,
         stage_metrics=stage_metrics,
-        target_exposures=target_exposures,
         stage_daily=stage_daily,
         scaled_leg_daily=scaled_leg_daily,
         config=config,
