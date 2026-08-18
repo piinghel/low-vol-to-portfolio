@@ -530,14 +530,14 @@ def plot_regime_comparison(
             start=start,
             end=end,
         )
-        combined_axis, legs_axis = axes[row]
-        combined_axis.plot(
+        strategy_axis, legs_axis = axes[row]
+        strategy_axis.plot(
             strategy.get_column("date").to_list(),
             strategy.get_column("wealth"),
-            label="Volatility-scaled strategy (gross)",
+            label="Vol-scaled L/S",
             color=plot_config.volatility_scaled_color,
         )
-        combined_axis.plot(
+        strategy_axis.plot(
             market.get_column("date").to_list(),
             market.get_column("wealth"),
             label="Russell 1000",
@@ -546,25 +546,25 @@ def plot_regime_comparison(
         legs_axis.plot(
             long_leg.get_column("date").to_list(),
             long_leg.get_column("wealth"),
-            label="Low-vol long contribution",
+            label="Long leg",
             color=plot_config.low_volatility_color,
         )
         legs_axis.plot(
             short_leg.get_column("date").to_list(),
             short_leg.get_column("wealth"),
-            label="High-vol short contribution",
+            label="Short leg",
             color=plot_config.high_volatility_color,
         )
-        combined_axis.text(
+        strategy_axis.text(
             0.02,
             0.95,
             period_label,
-            transform=combined_axis.transAxes,
+            transform=strategy_axis.transAxes,
             color=plot_config.muted_text_color,
             fontsize=11.5,
             va="top",
         )
-        for axis in (combined_axis, legs_axis):
+        for axis in (strategy_axis, legs_axis):
             axis.axhline(
                 1,
                 color=plot_config.zero_line_color,
@@ -575,16 +575,16 @@ def plot_regime_comparison(
             axis.yaxis.set_major_formatter(wealth_formatter)
             _clean_axis(axis, plot_config)
         if row == 1:
-            for axis in (combined_axis, legs_axis):
+            for axis in (strategy_axis, legs_axis):
                 axis.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
                 axis.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
         if row == 0:
-            combined_handles, combined_labels = combined_axis.get_legend_handles_labels()
+            strategy_handles, strategy_labels = strategy_axis.get_legend_handles_labels()
             legs_handles, legs_labels = legs_axis.get_legend_handles_labels()
-            legend_handles = combined_handles + legs_handles
-            legend_labels = combined_labels + legs_labels
+            legend_handles = strategy_handles + legs_handles
+            legend_labels = strategy_labels + legs_labels
         else:
-            combined_axis.tick_params(axis="x", labelbottom=True)
+            strategy_axis.tick_params(axis="x", labelbottom=True)
 
     figure.legend(
         legend_handles,
@@ -638,7 +638,7 @@ def _comparison_style(
     ]
     labels = {
         scenario_config.naive_equal_weight_long_short: ("Equal-weight reference"),
-        scenario_config.volatility_scaled_long_short: ("Volatility-scaled strategy"),
+        scenario_config.volatility_scaled_long_short: ("Vol-scaled L/S"),
     }
     colors = {
         scenario_config.naive_equal_weight_long_short: (
