@@ -12,7 +12,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import polars as pl
-from matplotlib.ticker import FuncFormatter, NullFormatter, NullLocator
+from matplotlib.ticker import FuncFormatter, MaxNLocator, NullFormatter, NullLocator
 
 from .config import BetaConfig, PlotConfig, ResearchConfig, ScenarioConfig
 from .frames import require_finite_float
@@ -515,6 +515,12 @@ def plot_regime_comparison(
             gridspec_kw={"hspace": 0.22, "wspace": 0.18},
         )
 
+    legend_handles = []
+    legend_labels = []
+    wealth_formatter = FuncFormatter(
+        lambda value, _: f"{value:.2f}".rstrip("0").rstrip(".") + "×"
+    )
+
     for row, (start, end, period_label) in enumerate(regimes):
         strategy, market, long_leg, short_leg = _regime_series(
             daily,
@@ -564,20 +570,44 @@ def plot_regime_comparison(
                 linewidth=0.8,
                 linestyle=":",
             )
-            axis.set_ylabel("Relative wealth")
+            axis.yaxis.set_major_locator(MaxNLocator(nbins=4))
+            axis.yaxis.set_major_formatter(wealth_formatter)
             _clean_axis(axis, plot_config)
         if row == 0:
-            combined_axis.legend(frameon=False, ncol=1 if mobile_layout else 2)
-            legs_axis.legend(frameon=False, ncol=1 if mobile_layout else 2)
+            combined_handles, combined_labels = combined_axis.get_legend_handles_labels()
+            legs_handles, legs_labels = legs_axis.get_legend_handles_labels()
+            legend_handles = combined_handles + legs_handles
+            legend_labels = combined_labels + legs_labels
         else:
             combined_axis.tick_params(axis="x", labelbottom=False)
-        legs_axis.set_xlabel("Date")
+
+    figure.legend(
+        legend_handles,
+        legend_labels,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.995),
+        ncol=2 if mobile_layout else 4,
+        frameon=False,
+        fontsize=9.5,
+    )
+    figure.supylabel(
+        "Relative wealth",
+        x=0.015,
+        color=plot_config.muted_text_color,
+        fontsize=11.5,
+    )
+    figure.supxlabel(
+        "Date",
+        y=0.015,
+        color=plot_config.muted_text_color,
+        fontsize=11.5,
+    )
 
     figure.subplots_adjust(
-        left=0.07,
+        left=0.08,
         right=0.99,
-        bottom=0.08,
-        top=0.98,
+        bottom=0.10,
+        top=0.89,
         hspace=0.22,
         wspace=0.18,
     )
