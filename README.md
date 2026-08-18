@@ -29,7 +29,7 @@ uv run ty check .
 uv run python -m unittest discover -s tests -v
 ```
 
-The eleven tests cover point-in-time membership, the $5 unadjusted-price filter, causal signal timing, deterministic deciles, the 4% weight cap and unnormalized short leg, fixed-quantity long/short P&L, turnover against drifted pre-trade weights, and degenerate beta inputs.
+The test suite covers point-in-time membership, the $5 unadjusted-price filter, causal signal timing, deterministic deciles, the 4% weight cap and unnormalized short leg, fixed-quantity long/short P&L, turnover against drifted pre-trade weights, leg-contribution additivity, and degenerate beta inputs.
 
 ## Default specification
 
