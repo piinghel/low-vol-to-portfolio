@@ -73,7 +73,7 @@ def build_stage_targets(
     sizing_config: SizingConfig,
     scenario_config: ScenarioConfig,
 ) -> pl.DataFrame:
-    """Build the long-only, naive L/S, and stock-volatility-scaled targets."""
+    """Build the long-only, equal-weight reference, and scaled targets."""
 
     frame = as_lazy(signal_snapshots)
     date_col = data_config.date_column

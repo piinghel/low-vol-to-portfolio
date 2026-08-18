@@ -419,36 +419,34 @@ def _compound_return_series(
 
 
 def _compound_leg_contribution(
-    combined: pl.DataFrame,
+    strategy: pl.DataFrame,
     leg: pl.DataFrame,
     leg_scenario: str,
 ) -> pl.DataFrame:
-    """Express a leg's P&L on the combined portfolio capital base.
+    """Express a basket's P&L on the strategy's capital base.
 
-    A separately compounded leg is a standalone portfolio. It cannot be added
-    to the other leg after a rebalance because both paths compound their own
-    capital. This function instead carries each leg's within-period P&L into
-    the combined portfolio NAV, making the two contribution paths additive.
+    A separately compounded basket is a standalone portfolio. This function
+    carries each basket's within-period P&L into the strategy wealth path so
+    the two contribution paths add back to the strategy.
     """
 
-    combined_periods = combined.sort("date").with_columns(
+    strategy_periods = strategy.sort("date").with_columns(
         (1.0 + pl.col("gross_return")).cum_prod().alias("local_wealth")
     )
-    combined_periods = combined_periods.with_columns(
-        pl.col("local_wealth").shift(1).fill_null(1.0).alias("previous_local_wealth")
+    strategy_periods = strategy_periods.with_columns(
+        pl.col("local_wealth").shift(1).fill_null(1.0).alias("previous_strategy_wealth")
     )
     # The package returns fixed-notional daily P&L. When the chart compounds
-    # the combined return path, each leg's daily P&L must be carried at the
-    # combined portfolio's prior wealth for the two contribution paths to add
-    # back to that path.
-    combined_periods = combined_periods.with_columns(
-        pl.col("previous_local_wealth").alias("leg_scale")
+    # the strategy return path, each basket's daily P&L must be carried at the
+    # strategy's prior wealth for the contribution paths to add back to it.
+    strategy_periods = strategy_periods.with_columns(
+        pl.col("previous_strategy_wealth").alias("leg_scale")
     )
     leg_periods = (
         leg.filter(pl.col("scenario") == leg_scenario)
         .sort("date")
         .with_columns((pl.col("portfolio_relative_value") - 1.0).alias("leg_pnl"))
-        .join(combined_periods.select("date", "leg_scale"), on="date", how="inner")
+        .join(strategy_periods.select("date", "leg_scale"), on="date", how="inner")
         .sort("date")
         .with_columns(
             (1.0 + (pl.col("leg_pnl") * pl.col("leg_scale")).cum_sum()).alias("wealth")
@@ -468,11 +466,11 @@ def _regime_series(
     """Build comparable portfolio and leg paths for one regime window."""
 
     window = daily.filter(pl.col("date").is_between(start, end))
-    combined_window = window.filter(
+    strategy_window = window.filter(
         pl.col("scenario") == scenario_config.volatility_scaled_long_short
     )
     strategy = _compound_return_series(
-        combined_window,
+        strategy_window,
         "gross_return",
     )
     market = _compound_return_series(
@@ -481,12 +479,12 @@ def _regime_series(
     )
     leg_window = scaled_leg_daily.filter(pl.col("date").is_between(start, end))
     long_leg = _compound_leg_contribution(
-        combined_window,
+        strategy_window,
         leg_window,
         "scaled_long_leg",
     )
     short_leg = _compound_leg_contribution(
-        combined_window,
+        strategy_window,
         leg_window,
         "scaled_short_leg",
     )
@@ -536,7 +534,7 @@ def plot_regime_comparison(
         combined_axis.plot(
             strategy.get_column("date").to_list(),
             strategy.get_column("wealth"),
-            label="Combined scaled L/S (gross)",
+            label="Volatility-scaled strategy (gross)",
             color=plot_config.volatility_scaled_color,
         )
         combined_axis.plot(
@@ -563,7 +561,7 @@ def plot_regime_comparison(
             period_label,
             transform=combined_axis.transAxes,
             color=plot_config.muted_text_color,
-            fontsize=10.5,
+            fontsize=11.5,
             va="top",
         )
         for axis in (combined_axis, legs_axis):
@@ -595,7 +593,7 @@ def plot_regime_comparison(
         bbox_to_anchor=(0.5, 0.995),
         ncol=2 if mobile_layout else 4,
         frameon=False,
-        fontsize=10.0,
+        fontsize=10.5,
     )
     figure.supylabel(
         "Relative wealth",
@@ -623,8 +621,8 @@ def plot_regime_comparison(
         path,
         plot_config,
         tight_layout=False,
-        tick_label_size=11.5,
-        axis_label_size=12.0,
+        tick_label_size=12.0,
+        axis_label_size=12.5,
     )
 
 
@@ -632,7 +630,7 @@ def _comparison_style(
     scenario_config: ScenarioConfig,
     plot_config: PlotConfig,
 ) -> tuple[list[str], dict[str, str], dict[str, str]]:
-    """Return the shared labels and colors for the two L/S implementations."""
+    """Return the shared labels and colors for the two implementations."""
 
     scenarios = [
         scenario_config.naive_equal_weight_long_short,
@@ -640,7 +638,7 @@ def _comparison_style(
     ]
     labels = {
         scenario_config.naive_equal_weight_long_short: ("Equal-weight reference"),
-        scenario_config.volatility_scaled_long_short: ("Stock-volatility-scaled L/S"),
+        scenario_config.volatility_scaled_long_short: ("Volatility-scaled strategy"),
     }
     colors = {
         scenario_config.naive_equal_weight_long_short: (
