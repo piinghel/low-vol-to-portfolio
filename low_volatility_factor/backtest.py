@@ -52,15 +52,11 @@ def prepare_held_returns(
             .alias("first_covered_date")
         )
     )
-    prepared = (
-        held.filter(
-            pl.col("last_covered_date").is_not_null()
-            & (pl.col(date_col) >= pl.col("first_covered_date"))
-            & (pl.col(date_col) <= pl.col("last_covered_date"))
-        )
-        .drop("last_covered_date", "first_covered_date")
-        .with_columns(pl.col(return_col).fill_null(0.0))
-    )
+    prepared = held.filter(
+        pl.col("last_covered_date").is_not_null()
+        & (pl.col(date_col) >= pl.col("first_covered_date"))
+        & (pl.col(date_col) <= pl.col("last_covered_date"))
+    ).drop("last_covered_date", "first_covered_date")
     invalid_returns = prepared.filter(pl.col(return_col) <= -1.0)
     if not invalid_returns.is_empty():
         offenders = invalid_returns.select(
@@ -71,8 +67,8 @@ def prepare_held_returns(
             f"first offenders: {offenders.to_dicts()}"
         )
     return prepared.with_columns(
-        pl.lit(False).alias("missing_return"),
-    )
+        pl.col(return_col).is_null().alias("missing_return"),
+    ).with_columns(pl.col(return_col).fill_null(0.0))
 
 
 def build_execution_schedule(
@@ -278,7 +274,7 @@ def simulate_stock_targets(
     data_config: DataConfig,
     cost_config: CostConfig,
 ) -> pl.DataFrame:
-    """Compute fixed-notional PnL, costs, and floating exposures via the packages."""
+    """Compute quantity-based PnL, costs, and floating exposures via packages."""
 
     date_col = data_config.date_column
     book, executions, metadata = _build_package_book(

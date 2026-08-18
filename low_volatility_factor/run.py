@@ -269,7 +269,7 @@ def _collect_held_return_quality(
         .group_by("scenario")
         .agg(
             pl.len().alias("position_return_observations"),
-            pl.col(return_column).null_count().alias("missing_returns"),
+            pl.col("missing_return").sum().alias("missing_returns"),
             (pl.col(return_column).abs() > 1.0).sum().alias("returns_over_100_percent"),
             pl.col(return_column).abs().max().alias("maximum_absolute_return"),
         )

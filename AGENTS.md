@@ -12,8 +12,9 @@ portfolio-construction article.
   local to this article; do not recreate the package's P&L math here.
 - Preserve point-in-time membership, causal feature construction, execution
   timing, return conventions, turnover, and cost assumptions.
-- P&L returns use the package's fixed-notional convention. A target quantity is
-  fixed between trades; market moves create floating exposures.
+- P&L uses quantities that stay fixed between trades. The package's
+  fixed-notional mode refers to the return denominator; market moves create
+  floating stock exposures, which are used for the diagnostics and figures.
 - Keep generated files in `output/`; treat them as reproducible outputs rather
   than hand-edited source.
 - Keep article figures minimal and free of embedded titles. Use subtle grids

@@ -30,7 +30,7 @@ uv run ty check .
 uv run python -m pytest -q
 ```
 
-The test suite covers point-in-time membership, the $5 unadjusted-price filter, causal signal timing, deterministic deciles, the 4% weight cap and unnormalized short leg, the shared package's fixed-notional P&L/turnover/cost path, leg-contribution additivity, and degenerate beta inputs.
+The test suite covers point-in-time membership, the $5 unadjusted-price filter, causal signal timing, deterministic deciles, the 4% weight cap and unnormalized short leg, the shared package's quantity-based P&L, turnover, costs, and floating-exposure path, leg-contribution additivity, and degenerate beta inputs.
 
 ## Default specification
 

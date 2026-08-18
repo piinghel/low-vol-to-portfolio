@@ -6,7 +6,7 @@ from typing import cast
 
 import polars as pl
 
-from low_volatility_factor.backtest import simulate_stock_targets
+from low_volatility_factor.backtest import prepare_held_returns, simulate_stock_targets
 from low_volatility_factor.config import (
     BucketConfig,
     CostConfig,
@@ -99,3 +99,37 @@ def test_package_pnl_uses_fixed_notional_and_floating_weights() -> None:
     assert result["equity_turnover"] == 2.0
     assert result["long_exposure"] == 1.10
     assert result["short_exposure"] == 0.90
+
+
+def test_held_return_quality_marks_internal_missing_dates() -> None:
+    targets = pl.DataFrame(
+        {
+            "signal_date": [date(2024, 1, 2)],
+            "asset_id_bb_global": ["asset"],
+            "scenario": ["test"],
+            "weight": [1.0],
+        }
+    )
+    asset_returns = pl.DataFrame(
+        {
+            "date": [date(2024, 1, 3), date(2024, 1, 5)],
+            "asset_id_bb_global": ["asset", "asset"],
+            "total_return": [0.10, 0.20],
+        }
+    )
+    date_to_signal = pl.DataFrame(
+        {
+            "date": [date(2024, 1, 3), date(2024, 1, 4), date(2024, 1, 5)],
+            "signal_date": [date(2024, 1, 2)] * 3,
+        }
+    )
+
+    result = prepare_held_returns(
+        targets,
+        asset_returns,
+        date_to_signal,
+        DataConfig(data_root=Path(".")),
+    )
+
+    assert result.get_column("missing_return").to_list() == [False, True, False]
+    assert result.get_column("total_return").to_list() == [0.10, 0.0, 0.20]

@@ -501,7 +501,7 @@ def plot_regime_comparison(
     """Compare the dot-com and AI-led regimes in one 2-by-2 figure."""
 
     regimes = (
-        (date(1998, 10, 8), date(2003, 12, 31), "1998–2003"),
+        (date(1998, 10, 8), date(2001, 12, 31), "1998–2001"),
         (date(2025, 4, 3), date(2026, 5, 27), "2025–2026"),
     )
     if mobile_layout:
@@ -573,10 +573,10 @@ def plot_regime_comparison(
             axis.yaxis.set_major_locator(MaxNLocator(nbins=4))
             axis.yaxis.set_major_formatter(wealth_formatter)
             _clean_axis(axis, plot_config)
-        if row == 1:
-            for axis in (strategy_axis, legs_axis):
-                axis.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
-                axis.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
+        tick_interval = 6 if row == 0 else 3
+        for axis in (strategy_axis, legs_axis):
+            axis.xaxis.set_major_locator(mdates.MonthLocator(interval=tick_interval))
+            axis.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
         if row == 0:
             strategy_handles, strategy_labels = (
                 strategy_axis.get_legend_handles_labels()
@@ -584,8 +584,6 @@ def plot_regime_comparison(
             legs_handles, legs_labels = legs_axis.get_legend_handles_labels()
             legend_handles = strategy_handles + legs_handles
             legend_labels = strategy_labels + legs_labels
-        else:
-            strategy_axis.tick_params(axis="x", labelbottom=True)
 
     figure.legend(
         legend_handles,
