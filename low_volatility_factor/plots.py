@@ -10,6 +10,7 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import polars as pl
 from matplotlib.ticker import FuncFormatter, NullFormatter, NullLocator
@@ -552,6 +553,110 @@ def plot_dotcom_comparison(
     _finish_figure(fig, path, plot_config, tight_layout=False)
 
 
+def plot_regime_comparison(
+    daily: pl.DataFrame,
+    path: Path,
+    scenario_config: ScenarioConfig,
+    plot_config: PlotConfig,
+    mobile_layout: bool = False,
+) -> None:
+    """Compare the scaled strategy with the market in two stress windows."""
+
+    windows = (
+        (date(1998, 10, 8), date(2000, 3, 9)),
+        (date(2025, 4, 3), date(2026, 5, 27)),
+    )
+    if mobile_layout:
+        fig, axes = plt.subplots(
+            2,
+            1,
+            figsize=(7.0, 7.2),
+            sharey=True,
+            gridspec_kw={"hspace": 0.18},
+        )
+    else:
+        fig, axes = plt.subplots(
+            1,
+            2,
+            figsize=(10.0, 4.5),
+            sharey=True,
+            gridspec_kw={"wspace": 0.08},
+        )
+    axes = list(axes)
+    series: list[tuple[pl.DataFrame, pl.DataFrame]] = []
+
+    for start, end in windows:
+        window = daily.filter(pl.col("date").is_between(start, end))
+        if window.is_empty():
+            raise ValueError(f"No daily observations found for {start}–{end}")
+        strategy_window = window.filter(
+            pl.col("scenario") == scenario_config.volatility_scaled_long_short
+        )
+        strategy = _compound_return_series(strategy_window, "gross_return")
+        market = _compound_return_series(
+            window.select("date", "market_return").unique("date"),
+            "market_return",
+        )
+        series.append((strategy, market))
+
+    for index, (axis, (strategy, market), (start, end)) in enumerate(
+        zip(axes, series, windows, strict=True)
+    ):
+        axis.plot(
+            strategy.get_column("date").to_list(),
+            strategy.get_column("wealth"),
+            label="Scaled low-volatility L/S (gross)",
+            color=plot_config.volatility_scaled_color,
+            linewidth=1.8,
+        )
+        axis.plot(
+            market.get_column("date").to_list(),
+            market.get_column("wealth"),
+            label="Russell 1000",
+            color=plot_config.low_volatility_color,
+            linewidth=1.8,
+        )
+        axis.axhline(
+            1,
+            color=plot_config.zero_line_color,
+            linewidth=0.8,
+            linestyle=":",
+        )
+        axis.set_xlim(start, end)
+        axis.set_xlabel("Date")
+        locator = mdates.AutoDateLocator(minticks=3, maxticks=5)
+        axis.xaxis.set_major_locator(locator)
+        axis.xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
+        _clean_axis(axis, plot_config)
+        axis.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.1f}×"))
+        if index == 0:
+            axis.set_ylabel("Wealth (base = 1)")
+        else:
+            axis.tick_params(axis="y", labelleft=False)
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    legend = fig.legend(
+        handles,
+        labels,
+        frameon=False,
+        ncol=2,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 1.02),
+    )
+    for label in legend.get_texts():
+        label.set_color(plot_config.text_color)
+        label.set_fontsize(10.5)
+    fig.subplots_adjust(
+        left=0.08,
+        right=0.99,
+        bottom=0.14,
+        top=0.86,
+        hspace=0.18,
+        wspace=0.08,
+    )
+    _finish_figure(fig, path, plot_config, tight_layout=False)
+
+
 def _comparison_style(
     scenario_config: ScenarioConfig,
     plot_config: PlotConfig,
@@ -642,6 +747,12 @@ def render_article_figures(
             plot_dotcom_comparison,
             stage_daily,
             scaled_leg_daily,
+            scenario_config=config.scenarios,
+            plot_config=config.plots,
+        ),
+        "regime_comparison": partial(
+            plot_regime_comparison,
+            stage_daily,
             scenario_config=config.scenarios,
             plot_config=config.plots,
         ),
