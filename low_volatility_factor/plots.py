@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import date
+from datetime import date, timedelta
 from functools import partial
 from pathlib import Path
 
@@ -354,13 +354,19 @@ def plot_performance_and_drawdowns(
         gridspec_kw={"height_ratios": [2.1, 1.0], "hspace": 0.08},
     )
     wealth_axis, drawdown_axis = axes
+    wealth_endpoints: dict[str, tuple[date, float]] = {}
     for scenario in scenarios:
         wealth = performance.filter(pl.col("scenario") == scenario).sort("date")
+        wealth_dates = wealth.get_column("date").to_list()
+        wealth_values = wealth.get_column("wealth")
         wealth_axis.plot(
-            wealth.get_column("date").to_list(),
-            wealth.get_column("wealth"),
-            label=labels[scenario],
+            wealth_dates,
+            wealth_values,
             color=colors[scenario],
+        )
+        wealth_endpoints[scenario] = (
+            wealth_dates[-1],
+            require_finite_float(wealth_values[-1], f"final wealth for {scenario}"),
         )
         drawdown = drawdowns.filter(pl.col("scenario") == scenario).sort("date")
         dates = drawdown.get_column("date").to_list()
@@ -399,7 +405,27 @@ def plot_performance_and_drawdowns(
     wealth_axis.yaxis.set_minor_formatter(NullFormatter())
     wealth_axis.yaxis.set_minor_locator(NullLocator())
     wealth_axis.set_ylabel("Wealth (base = 1, log scale)")
-    wealth_axis.legend(frameon=False)
+    last_date = max(date for date, _ in wealth_endpoints.values())
+    label_date = last_date + timedelta(days=80)
+    wealth_axis.set_xlim(
+        performance.get_column("date").min(),
+        last_date + timedelta(days=1400),
+    )
+    for index, scenario in enumerate(
+        sorted(scenarios, key=lambda item: wealth_endpoints[item][1])
+    ):
+        _, value = wealth_endpoints[scenario]
+        wealth_axis.annotate(
+            labels[scenario],
+            xy=(label_date, value),
+            xytext=(0, -10 if index == 0 else 10),
+            textcoords="offset points",
+            ha="left",
+            va="center",
+            color=colors[scenario],
+            fontsize=8.5,
+            fontweight="medium",
+        )
     drawdown_axis.set_ylabel("Drawdown (%)")
     for axis in axes:
         _clean_axis(axis, plot_config)
