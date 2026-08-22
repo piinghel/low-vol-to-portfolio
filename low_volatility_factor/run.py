@@ -166,18 +166,15 @@ def _build_signal_snapshots(
             config.data.asset_column,
             config.signal.signal_column,
             config.signal.sizing_volatility_column,
-            config.data.market_cap_column,
             "stock_beta",
         )
         .drop_nulls(
             [
                 config.signal.signal_column,
                 config.signal.sizing_volatility_column,
-                config.data.market_cap_column,
                 "stock_beta",
             ]
         )
-        .filter(pl.col(config.data.market_cap_column) > 0)
         .pipe(
             assign_volatility_buckets,
             config.data,
@@ -310,7 +307,6 @@ def run(
         config.data.asset_column,
         config.data.adjusted_price_column,
         config.data.unadjusted_price_column,
-        config.data.market_cap_column,
         config.data.total_return_column,
     )
     price_bounds = (
@@ -357,12 +353,7 @@ def run(
         config.sizing,
         config.scenarios,
     )
-    decile_targets = build_decile_targets(
-        signal_snapshots,
-        config.data,
-        config.buckets,
-        config.sizing.maximum_absolute_stock_weight,
-    )
+    decile_targets = build_decile_targets(signal_snapshots, config.data, config.buckets)
     target_exposures = summarize_target_exposures(stage_targets)
 
     valid_signal_dates = (

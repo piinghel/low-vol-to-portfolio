@@ -16,7 +16,6 @@ class DataConfig:
     asset_column: str = "asset_id_bb_global"
     adjusted_price_column: str = "px_last"
     unadjusted_price_column: str = "px_last_unadjusted"
-    market_cap_column: str = "market_cap"
     total_return_column: str = "total_return"
     index_price_column: str = "px_last"
     minimum_unadjusted_price: float = 5.0
@@ -142,7 +141,7 @@ class BacktestConfig:
 class ScenarioConfig:
     low_volatility_long: str = "low_vol_long"
     high_volatility_long: str = "high_vol_long"
-    market_cap_long_short: str = "market_cap_ls"
+    naive_equal_weight_long_short: str = "naive_equal_ls"
     volatility_scaled_long_short: str = "vol_scaled_ls"
 
     def __post_init__(self) -> None:

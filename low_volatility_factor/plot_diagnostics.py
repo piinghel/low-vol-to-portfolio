@@ -70,9 +70,9 @@ def plot_decile_profile(
         figsize=(5.2, 9.0) if mobile_layout else (9, 8.0),
     )
     specs = [
+        ("sharpe_ratio", "Sharpe ratio", 1.0),
         ("geometric_return", "Geometric return (%)", 100.0),
         ("volatility", "Volatility (%)", 100.0),
-        ("sharpe_ratio", "Sharpe ratio", 1.0),
     ]
     for axis, (column, title, multiplier) in zip(axes, specs, strict=True):
         axis.bar(

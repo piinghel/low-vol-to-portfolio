@@ -26,15 +26,15 @@ def _comparison_style(
     """Return shared labels and colors for the two implementations."""
 
     scenarios = [
-        scenario_config.market_cap_long_short,
+        scenario_config.naive_equal_weight_long_short,
         scenario_config.volatility_scaled_long_short,
     ]
     labels = {
-        scenario_config.market_cap_long_short: "Market-cap\nlong/short",
+        scenario_config.naive_equal_weight_long_short: "Equal-weight\nlong/short",
         scenario_config.volatility_scaled_long_short: "Volatility-scaled\nlong/short",
     }
     colors = {
-        scenario_config.market_cap_long_short: (
+        scenario_config.naive_equal_weight_long_short: (
             plot_config.naive_long_short_color
         ),
         scenario_config.volatility_scaled_long_short: (

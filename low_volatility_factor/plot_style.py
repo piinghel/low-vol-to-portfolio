@@ -50,7 +50,6 @@ def finish_figure(
                 label.set_fontsize(legend_size)
     if tight_layout:
         figure.tight_layout()
-    save_metadata = {"Date": None} if path.suffix == ".svg" else None
     figure.savefig(
         path,
         format=path.suffix.removeprefix("."),
@@ -58,14 +57,7 @@ def finish_figure(
         bbox_inches="tight",
         pad_inches=0.03,
         facecolor=plot_config.background_color,
-        metadata=save_metadata,
     )
-    if path.suffix == ".svg":
-        lines = path.read_text(encoding="utf-8").splitlines()
-        path.write_text(
-            "\n".join(line.rstrip() for line in lines) + "\n",
-            encoding="utf-8",
-        )
     plt.close(figure)
 
 
