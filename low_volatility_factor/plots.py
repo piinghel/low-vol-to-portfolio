@@ -56,11 +56,17 @@ def _finish_figure(
     fig.savefig(
         path,
         format=path.suffix.removeprefix("."),
-        dpi=300,
+        dpi=plot_config.raster_dpi,
         bbox_inches="tight",
         pad_inches=0.03,
         facecolor=plot_config.background_color,
     )
+    if path.suffix == ".svg":
+        lines = path.read_text(encoding="utf-8").splitlines()
+        path.write_text(
+            "\n".join(line.rstrip() for line in lines) + "\n",
+            encoding="utf-8",
+        )
     plt.close(fig)
 
 
@@ -106,7 +112,7 @@ def plot_eligible_universe(
         color=plot_config.zero_line_color,
         linewidth=1.1,
         linestyle="--",
-        label=f"Median ({median:,.0f})",
+        label=f"Median ({int(median + 0.5):,})",
     )
     axis.set_xlim(dates[0], dates[-1])
     axis.set_ylim(minimum, maximum)
@@ -180,8 +186,8 @@ def plot_naive_leg_risk(
         scenario_config.high_volatility_long: "High-volatility decile",
     }
     colors = {
-        scenario_config.low_volatility_long: plot_config.reference_low_color,
-        scenario_config.high_volatility_long: plot_config.reference_high_color,
+        scenario_config.low_volatility_long: plot_config.low_volatility_color,
+        scenario_config.high_volatility_long: plot_config.high_volatility_color,
     }
     volatility_values = [
         float(selected.filter(pl.col("scenario") == scenario)["volatility"][0]) * 100
@@ -404,12 +410,12 @@ def plot_performance_and_drawdowns(
     wealth_axis.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}×"))
     wealth_axis.yaxis.set_minor_formatter(NullFormatter())
     wealth_axis.yaxis.set_minor_locator(NullLocator())
-    wealth_axis.set_ylabel("Wealth (base = 1, log scale)")
+    wealth_axis.set_ylabel("Cumulative return")
     last_date = max(date for date, _ in wealth_endpoints.values())
     label_date = last_date + timedelta(days=80)
     wealth_axis.set_xlim(
         performance.get_column("date").min(),
-        last_date + timedelta(days=1400),
+        last_date + timedelta(days=180),
     )
     for index, scenario in enumerate(
         sorted(scenarios, key=lambda item: wealth_endpoints[item][1])
@@ -423,7 +429,7 @@ def plot_performance_and_drawdowns(
             ha="left",
             va="center",
             color=colors[scenario],
-            fontsize=8.5,
+            fontsize=10.0,
             fontweight="medium",
         )
     drawdown_axis.set_ylabel("Drawdown (%)")
@@ -620,14 +626,18 @@ def plot_regime_comparison(
         frameon=False,
         fontsize=10.5,
     )
-    figure.supylabel(
-        "Relative wealth",
-        x=0.015,
-        color=plot_config.muted_text_color,
-        fontsize=12.0,
-    )
+    if mobile_layout:
+        for strategy_axis, _ in axes:
+            strategy_axis.set_ylabel("Relative wealth")
+    else:
+        figure.supylabel(
+            "Relative wealth",
+            x=0.015,
+            color=plot_config.muted_text_color,
+            fontsize=12.0,
+        )
     figure.subplots_adjust(
-        left=0.08,
+        left=0.13 if mobile_layout else 0.08,
         right=0.99,
         bottom=0.10,
         top=0.89,
