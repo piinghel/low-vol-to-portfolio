@@ -202,9 +202,9 @@ def plot_naive_leg_risk(
         for scenario in scenarios
     ]
     if mobile_layout:
-        fig, axes = plt.subplots(2, 1, figsize=(7.0, 6.5))
+        fig, axes = plt.subplots(2, 1, figsize=(6.4, 5.0))
     else:
-        fig, axes = plt.subplots(1, 2, figsize=(10, 3.8))
+        fig, axes = plt.subplots(1, 2, figsize=(9.0, 2.8))
     panel_specs = [
         (volatility_values, "Annualized volatility", "%.1f%%"),
         (beta_values, "Average ex-ante beta", "%.2f"),
@@ -314,7 +314,7 @@ def plot_beta_diagnostic(
     axis.plot(
         dates,
         data.get_column("stock_beta"),
-        label="Aggregated ex-ante stock beta",
+        label="Ex-ante stock beta",
         color=plot_config.ex_ante_beta_color,
         linewidth=1.1,
         alpha=0.85,
@@ -322,11 +322,10 @@ def plot_beta_diagnostic(
     axis.plot(
         dates,
         data.get_column("rolling_realized_beta"),
-        label=f"{beta_config.lookback}-day realized beta",
+        label=f"Realized beta ({beta_config.lookback} days)",
         color=plot_config.realized_beta_color,
         linewidth=1.6,
     )
-    axis.axhspan(-0.1, 0.1, color=plot_config.grid_color, alpha=0.3, linewidth=0)
     axis.axhline(
         0,
         color=plot_config.zero_line_color,
@@ -410,7 +409,7 @@ def plot_performance_and_drawdowns(
     wealth_axis.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}×"))
     wealth_axis.yaxis.set_minor_formatter(NullFormatter())
     wealth_axis.yaxis.set_minor_locator(NullLocator())
-    wealth_axis.set_ylabel("Cumulative return")
+    wealth_axis.set_ylabel("Growth of $1 (log scale)")
     last_date = max(date for date, _ in wealth_endpoints.values())
     label_date = last_date + timedelta(days=80)
     wealth_axis.set_xlim(
@@ -442,10 +441,18 @@ def plot_performance_and_drawdowns(
 def _compound_return_series(
     frame: pl.DataFrame,
     return_column: str,
+    *,
+    baseline_at_first_date: bool = False,
 ) -> pl.DataFrame:
-    return frame.sort("date").select(
+    ordered = frame.sort("date").with_row_index("row_number")
+    period_return = pl.col(return_column).fill_null(0.0)
+    if baseline_at_first_date:
+        period_return = (
+            pl.when(pl.col("row_number") == 0).then(0.0).otherwise(period_return)
+        )
+    return ordered.select(
         "date",
-        (1.0 + pl.col(return_column).fill_null(0.0)).cum_prod().alias("wealth"),
+        (1.0 + period_return).cum_prod().alias("wealth"),
     )
 
 
@@ -453,6 +460,8 @@ def _compound_leg_contribution(
     strategy: pl.DataFrame,
     leg: pl.DataFrame,
     leg_scenario: str,
+    *,
+    baseline_at_first_date: bool = False,
 ) -> pl.DataFrame:
     """Express a basket's P&L on the strategy's capital base.
 
@@ -461,8 +470,14 @@ def _compound_leg_contribution(
     the two contribution paths add back to the strategy.
     """
 
-    strategy_periods = strategy.sort("date").with_columns(
-        (1.0 + pl.col("gross_return")).cum_prod().alias("local_wealth")
+    strategy_periods = strategy.sort("date").with_row_index("row_number")
+    strategy_return = pl.col("gross_return").fill_null(0.0)
+    if baseline_at_first_date:
+        strategy_return = (
+            pl.when(pl.col("row_number") == 0).then(0.0).otherwise(strategy_return)
+        )
+    strategy_periods = strategy_periods.with_columns(
+        (1.0 + strategy_return).cum_prod().alias("local_wealth")
     )
     strategy_periods = strategy_periods.with_columns(
         pl.col("local_wealth").shift(1).fill_null(1.0).alias("previous_strategy_wealth")
@@ -479,6 +494,13 @@ def _compound_leg_contribution(
         .with_columns((pl.col("portfolio_relative_value") - 1.0).alias("leg_pnl"))
         .join(strategy_periods.select("date", "leg_scale"), on="date", how="inner")
         .sort("date")
+        .with_row_index("row_number")
+        .with_columns(
+            pl.when(pl.lit(baseline_at_first_date) & (pl.col("row_number") == 0))
+            .then(0.0)
+            .otherwise(pl.col("leg_pnl"))
+            .alias("leg_pnl")
+        )
         .with_columns(
             (1.0 + (pl.col("leg_pnl") * pl.col("leg_scale")).cum_sum()).alias("wealth")
         )
@@ -503,21 +525,25 @@ def _regime_series(
     strategy = _compound_return_series(
         strategy_window,
         "gross_return",
+        baseline_at_first_date=True,
     )
     market = _compound_return_series(
         window.select("date", "market_return").unique("date"),
         "market_return",
+        baseline_at_first_date=True,
     )
     leg_window = scaled_leg_daily.filter(pl.col("date").is_between(start, end))
     long_leg = _compound_leg_contribution(
         strategy_window,
         leg_window,
         "scaled_long_leg",
+        baseline_at_first_date=True,
     )
     short_leg = _compound_leg_contribution(
         strategy_window,
         leg_window,
         "scaled_short_leg",
+        baseline_at_first_date=True,
     )
     return strategy, market, long_leg, short_leg
 
@@ -530,7 +556,7 @@ def plot_regime_comparison(
     plot_config: PlotConfig,
     mobile_layout: bool = False,
 ) -> None:
-    """Compare the dot-com and AI-led regimes in one 2-by-2 figure."""
+    """Compare two difficult rallies in one 2-by-2 figure."""
 
     regimes = (
         (date(1998, 10, 8), date(2001, 12, 31), "1998–2001"),
@@ -565,7 +591,7 @@ def plot_regime_comparison(
         strategy_axis.plot(
             strategy.get_column("date").to_list(),
             strategy.get_column("wealth"),
-            label="Vol-scaled L/S",
+            label="Volatility-scaled long/short",
             color=plot_config.volatility_scaled_color,
         )
         strategy_axis.plot(
@@ -576,14 +602,14 @@ def plot_regime_comparison(
         )
         legs_axis.plot(
             long_leg.get_column("date").to_list(),
-            long_leg.get_column("wealth"),
-            label="Long leg",
+            (long_leg.get_column("wealth") - 1.0) * 100,
+            label="Long contribution",
             color=plot_config.low_volatility_color,
         )
         legs_axis.plot(
             short_leg.get_column("date").to_list(),
-            short_leg.get_column("wealth"),
-            label="Short leg",
+            (short_leg.get_column("wealth") - 1.0) * 100,
+            label="Short contribution",
             color=plot_config.high_volatility_color,
         )
         strategy_axis.text(
@@ -595,21 +621,33 @@ def plot_regime_comparison(
             fontsize=11.5,
             va="top",
         )
+        strategy_axis.axhline(
+            1,
+            color=plot_config.zero_line_color,
+            linewidth=0.8,
+            linestyle=":",
+        )
+        legs_axis.axhline(
+            0,
+            color=plot_config.zero_line_color,
+            linewidth=0.8,
+            linestyle=":",
+        )
+        strategy_axis.yaxis.set_major_locator(MaxNLocator(nbins=4))
+        strategy_axis.yaxis.set_major_formatter(wealth_formatter)
+        legs_axis.yaxis.set_major_locator(MaxNLocator(nbins=4))
+        legs_axis.yaxis.set_major_formatter(
+            FuncFormatter(lambda value, _: f"{value:.0f}%")
+        )
         for axis in (strategy_axis, legs_axis):
-            axis.axhline(
-                1,
-                color=plot_config.zero_line_color,
-                linewidth=0.8,
-                linestyle=":",
-            )
-            axis.yaxis.set_major_locator(MaxNLocator(nbins=4))
-            axis.yaxis.set_major_formatter(wealth_formatter)
             _clean_axis(axis, plot_config)
         tick_interval = 6 if row == 0 else 3
         for axis in (strategy_axis, legs_axis):
             axis.xaxis.set_major_locator(mdates.MonthLocator(interval=tick_interval))
             axis.xaxis.set_major_formatter(mdates.DateFormatter("%b '%y"))
         if row == 0:
+            strategy_axis.set_title("Combined wealth", loc="left", pad=10)
+            legs_axis.set_title("Leg contributions", loc="left", pad=10)
             strategy_handles, strategy_labels = (
                 strategy_axis.get_legend_handles_labels()
             )
@@ -626,16 +664,9 @@ def plot_regime_comparison(
         frameon=False,
         fontsize=10.5,
     )
-    if mobile_layout:
-        for strategy_axis, _ in axes:
-            strategy_axis.set_ylabel("Relative wealth")
-    else:
-        figure.supylabel(
-            "Relative wealth",
-            x=0.015,
-            color=plot_config.muted_text_color,
-            fontsize=12.0,
-        )
+    for strategy_axis, legs_axis in axes:
+        strategy_axis.set_ylabel("Relative wealth")
+        legs_axis.set_ylabel("Contribution to initial capital")
     figure.subplots_adjust(
         left=0.13 if mobile_layout else 0.08,
         right=0.99,
@@ -665,8 +696,8 @@ def _comparison_style(
         scenario_config.volatility_scaled_long_short,
     ]
     labels = {
-        scenario_config.naive_equal_weight_long_short: ("Equal-weight reference"),
-        scenario_config.volatility_scaled_long_short: ("Vol-scaled L/S"),
+        scenario_config.naive_equal_weight_long_short: ("Equal-weight long/short"),
+        scenario_config.volatility_scaled_long_short: ("Volatility-scaled long/short"),
     }
     colors = {
         scenario_config.naive_equal_weight_long_short: (

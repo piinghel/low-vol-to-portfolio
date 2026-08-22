@@ -25,3 +25,21 @@ def test_leg_contributions_add_to_compounded_combined_wealth() -> None:
     reconstructed = long["wealth"] + short["wealth"] - 1.0
 
     assert reconstructed.to_list() == pytest.approx(combined_wealth.to_list())
+
+    long_from_first_close = _compound_leg_contribution(
+        combined,
+        legs,
+        "long",
+        baseline_at_first_date=True,
+    )
+    short_from_first_close = _compound_leg_contribution(
+        combined,
+        legs,
+        "short",
+        baseline_at_first_date=True,
+    )
+    reconstructed_from_first_close = (
+        long_from_first_close["wealth"] + short_from_first_close["wealth"] - 1.0
+    )
+
+    assert reconstructed_from_first_close.to_list() == pytest.approx([1.0, 1.2])
