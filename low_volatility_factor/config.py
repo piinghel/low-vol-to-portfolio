@@ -16,6 +16,7 @@ class DataConfig:
     asset_column: str = "asset_id_bb_global"
     adjusted_price_column: str = "px_last"
     unadjusted_price_column: str = "px_last_unadjusted"
+    market_cap_column: str = "market_cap"
     total_return_column: str = "total_return"
     index_price_column: str = "px_last"
     minimum_unadjusted_price: float = 5.0
@@ -141,7 +142,7 @@ class BacktestConfig:
 class ScenarioConfig:
     low_volatility_long: str = "low_vol_long"
     high_volatility_long: str = "high_vol_long"
-    naive_equal_weight_long_short: str = "naive_equal_ls"
+    market_cap_long_short: str = "market_cap_ls"
     volatility_scaled_long_short: str = "vol_scaled_ls"
 
     def __post_init__(self) -> None:
@@ -164,7 +165,7 @@ class PlotConfig:
     ex_ante_beta_color: str = "#B8C0C7"
     text_color: str = "#2E3A45"
     muted_text_color: str = "#66737E"
-    grid_color: str = "#E2E7EA"
+    grid_color: str = "#DBE1E3"
     background_color: str = "#FFFFFF"
     zero_line_color: str = "#87939C"
 

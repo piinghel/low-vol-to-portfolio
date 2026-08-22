@@ -1,6 +1,7 @@
 """High-value portfolio-construction and package-PnL invariants."""
 
 from datetime import date
+from math import isclose
 from pathlib import Path
 from typing import cast
 
@@ -28,6 +29,7 @@ def test_scaling_respects_cap_and_keeps_short_leg_underinvested() -> None:
             "asset_id_bb_global": [f"stock_{index}" for index in range(200)],
             "volatility_decile": [1] * 100 + [10] * 100,
             "sizing_volatility": [0.10] * 100 + [0.50] * 100,
+            "market_cap": [1.0] * 200,
             "stock_beta": [0.50] * 100 + [1.50] * 100,
         }
     )
@@ -45,6 +47,34 @@ def test_scaling_respects_cap_and_keeps_short_leg_underinvested() -> None:
     assert cast(float, scaled["weight"].abs().max()) <= 0.04
     assert exposures["long_exposure"] == 1.0
     assert exposures["short_exposure"] == 0.4
+
+
+def test_market_cap_reference_is_capped_and_fully_invested() -> None:
+    snapshots = pl.DataFrame(
+        {
+            "date": [date(2024, 1, 2)] * 200,
+            "asset_id_bb_global": [f"stock_{index}" for index in range(200)],
+            "volatility_decile": [1] * 100 + [10] * 100,
+            "sizing_volatility": [0.10] * 100 + [0.50] * 100,
+            "market_cap": [1_000.0] + [1.0] * 199,
+            "stock_beta": [0.50] * 100 + [1.50] * 100,
+        }
+    )
+    targets = build_stage_targets(
+        snapshots,
+        DataConfig(data_root=Path(".")),
+        SignalConfig(),
+        BucketConfig(),
+        SizingConfig(),
+        ScenarioConfig(),
+    )
+    reference = targets.filter(pl.col("scenario") == "market_cap_ls")
+    exposures = summarize_target_exposures(reference).row(0, named=True)
+
+    assert cast(float, reference["weight"].abs().max()) == 0.04
+    assert isclose(exposures["long_exposure"], 1.0)
+    assert isclose(exposures["short_exposure"], 1.0)
+    assert isclose(exposures["gross_exposure"], 2.0)
 
 
 def _fixture() -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, pl.DataFrame]:

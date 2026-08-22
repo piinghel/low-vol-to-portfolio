@@ -91,7 +91,7 @@ def align_prices_to_market_calendar(
     )
     require_columns(calendar, [date_col], "market_calendar")
 
-    return (
+    aligned = (
         frame.sort([asset_col, date_col])
         .with_columns(
             pl.col(return_col).alias("source_total_return"),
@@ -111,6 +111,14 @@ def align_prices_to_market_calendar(
         )
         .drop("_total_return_index")
     )
+    if config.market_cap_column in frame.collect_schema().names():
+        aligned = aligned.with_columns(
+            pl.col(config.market_cap_column)
+            .forward_fill()
+            .over(asset_col, order_by=date_col)
+            .alias(config.market_cap_column)
+        )
+    return aligned
 
 
 def build_investable_universe(

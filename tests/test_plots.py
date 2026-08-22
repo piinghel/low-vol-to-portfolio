@@ -5,7 +5,7 @@ from datetime import date
 import polars as pl
 import pytest
 
-from low_volatility_factor.plots import _compound_leg_contribution
+from low_volatility_factor.plot_performance import _compound_leg_contribution
 
 
 def test_leg_contributions_add_to_compounded_combined_wealth() -> None:

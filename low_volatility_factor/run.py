@@ -166,15 +166,18 @@ def _build_signal_snapshots(
             config.data.asset_column,
             config.signal.signal_column,
             config.signal.sizing_volatility_column,
+            config.data.market_cap_column,
             "stock_beta",
         )
         .drop_nulls(
             [
                 config.signal.signal_column,
                 config.signal.sizing_volatility_column,
+                config.data.market_cap_column,
                 "stock_beta",
             ]
         )
+        .filter(pl.col(config.data.market_cap_column) > 0)
         .pipe(
             assign_volatility_buckets,
             config.data,
@@ -296,21 +299,8 @@ def run(
     output_directory: Path,
 ) -> None:
     output = output_directory.expanduser().resolve()
-    figures = output / "figures"
     output.mkdir(parents=True, exist_ok=True)
-    figures.mkdir(parents=True, exist_ok=True)
-    obsolete_paths = [
-        output / "hedge_targets.csv",
-        output / "missing_returns.csv",
-        figures / "beta_hedge.png",
-    ]
-    for stem in ("cumulative_performance", "drawdowns", "dotcom_comparison"):
-        obsolete_paths.extend(
-            figures / f"{stem}{suffix}"
-            for suffix in (".png", "_mobile.png", ".svg", "_mobile.svg")
-        )
-    for obsolete_path in obsolete_paths:
-        obsolete_path.unlink(missing_ok=True)
+    figures = output
 
     _write_json(output / "config.json", asdict(config))
     _write_json(output / "data_manifest.json", _input_manifest(config))
@@ -320,6 +310,7 @@ def run(
         config.data.asset_column,
         config.data.adjusted_price_column,
         config.data.unadjusted_price_column,
+        config.data.market_cap_column,
         config.data.total_return_column,
     )
     price_bounds = (
@@ -366,7 +357,12 @@ def run(
         config.sizing,
         config.scenarios,
     )
-    decile_targets = build_decile_targets(signal_snapshots, config.data, config.buckets)
+    decile_targets = build_decile_targets(
+        signal_snapshots,
+        config.data,
+        config.buckets,
+        config.sizing.maximum_absolute_stock_weight,
+    )
     target_exposures = summarize_target_exposures(stage_targets)
 
     valid_signal_dates = (
@@ -436,14 +432,9 @@ def run(
         stage_daily, annualization=config.backtest.annualization_factor
     )
 
-    stage_targets.write_parquet(output / "stage_targets.parquet")
-    target_exposures.write_parquet(output / "target_exposures.parquet")
     target_exposures.write_csv(output / "target_exposures.csv")
     schedule.write_csv(output / "execution_schedule.csv")
-    stage_daily.write_parquet(output / "daily_stage_results.parquet")
-    scaled_leg_daily.write_parquet(output / "daily_scaled_leg_results.parquet")
     stage_metrics.write_csv(output / "stage_metrics.csv")
-    stage_metrics.write_parquet(output / "stage_metrics.parquet")
     decile_metrics.write_csv(output / "decile_metrics.csv")
 
     render_article_figures(
@@ -475,7 +466,7 @@ def main() -> None:
         "--output",
         type=Path,
         default=None,
-        help=("Output directory (default: <project-root>/output/latest)"),
+        help=("Output directory (default: <project-root>/output)"),
     )
     args = parser.parse_args()
     article_project = Path(__file__).resolve().parents[1]
@@ -487,7 +478,7 @@ def main() -> None:
     output = (
         args.output.expanduser().resolve()
         if args.output is not None
-        else article_project / "output" / "latest"
+        else article_project / "output"
     )
     config = ResearchConfig(data=DataConfig(data_root=data_root))
     run(config, output)

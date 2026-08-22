@@ -14,12 +14,16 @@ uv run low-vol-factor
 ```
 
 The current export lives in
-`Documents/quant_research/data/riy_backtest_data_20260818/`.
+`Documents/quant_research/data/riy_backtest_data_20260818/`
 and has the flat layout `data/prices.parquet`, `data/constituents.parquet`, and
 `data/index.parquet`. Pass `--data-root` to use another versioned export. The
 older segmented files remain available separately.
 
-Outputs are written to this project’s `output/latest/` directory. The run records its full configuration, input-file metadata, dependency versions, data-quality checks, targets, daily results, metrics, and figures.
+Outputs are written to this project’s flat `output/` directory. The run
+records its configuration, input-file metadata, data-quality checks, summary
+tables, and the fourteen desktop/mobile PNGs used by the article. Large
+intermediate holdings and daily-result tables stay in memory so the default
+output remains a compact publication bundle.
 
 Run the deliberately small correctness suite with:
 
@@ -55,5 +59,8 @@ Missing dates inside a security's observed history carry zero return; trailing d
 - `portfolio.py`: stage targets and exposures.
 - `backtest.py`: effective holdings and execution rows for the shared P&L package.
 - `metrics.py`: standard performance, exposure, and realized-beta metrics.
-- `plots.py`: deterministic article figures, emitted as SVG with PNG fallbacks.
+- `plots.py`: explicit orchestration for the complete article figure set.
+- `plot_diagnostics.py`: universe, decile, risk, exposure, and beta figures.
+- `plot_performance.py`: performance, drawdown, and regime figures.
+- `plot_style.py`: shared rendering and export policy.
 - `run.py`: one-command orchestration and artifacts.
