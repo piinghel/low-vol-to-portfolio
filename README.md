@@ -1,66 +1,20 @@
 # Low-volatility factor research
 
-This standalone project contains the deterministic Polars pipeline and figures
-used by the blog post **“The Low-Volatility Factor: Portfolio Construction
-Matters.”**
+Research code and figures for [The Low-Volatility Factor: From Stock Sorts to
+Portfolio Risk](https://piinghel.github.io/quant/2024/12/15/low-volatility-factor.html).
 
-## Run the research
-
-From this project’s root:
+## Run
 
 ```bash
 uv sync --dev
 uv run low-vol-factor
 ```
 
-The current export lives in
-`Documents/quant_research/data/riy_backtest_data_20260818/`
-and has the flat layout `data/prices.parquet`, `data/constituents.parquet`, and
-`data/index.parquet`. Pass `--data-root` to use another versioned export. The
-older segmented files remain available separately.
-
-Outputs are written to this project’s flat `output/` directory. The run
-records its configuration, input-file metadata, data-quality checks, summary
-tables, and the fourteen desktop/mobile PNGs used by the article. Large
-intermediate holdings and daily-result tables stay in memory so the default
-output remains a compact publication bundle.
-
-Run the deliberately small correctness suite with:
+## Check
 
 ```bash
 uv run ruff check .
 uv run ruff format --check .
 uv run ty check .
-uv run python -m pytest -q
+uv run pytest -q
 ```
-
-The test suite covers point-in-time membership, the $5 unadjusted-price filter, causal signal timing, deterministic deciles, the 4% weight cap and unnormalized short leg, the shared package's quantity-based P&L, turnover, costs, and floating-exposure path, leg-contribution additivity, and degenerate beta inputs.
-
-## Default specification
-
-- Point-in-time Russell 1000 constituents joined by Bloomberg FIGI with a
-  monthly backward as-of match; minimum unadjusted price of $5.
-- Selection signal: mean annualized trailing volatility over 21, 63, and 126 market days.
-- Ten equal-count deciles; long decile 1 and short decile 10.
-- Three-week signal close, next-market-close execution, subsequent close-to-close return.
-- Sizing volatility: 60 market days; 20% stock target; 4% absolute position cap; 100% leg gross cap.
-- Beta diagnostic: trailing 252-day covariance estimate, minimum 126 observations.
-- The backtest reports beta as a diagnostic; an optional index-futures overlay can offset it.
-- Costs: 5 bps per dollar of equity traded.
-
-Missing dates inside a security's observed history carry zero return; trailing dates close the position at its last covered observation. Held-return quality is persisted as an audit table, while returns at or below -100% stop the run.
-
-## Modules
-
-- `config.py`: research assumptions.
-- `data.py`: input loading, calendar alignment, and point-in-time universe.
-- `signals.py`: causal volatility features and deciles.
-- `risk.py`: trailing stock-beta diagnostic.
-- `portfolio.py`: stage targets and exposures.
-- `backtest.py`: effective holdings and execution rows for the shared P&L package.
-- `metrics.py`: standard performance, exposure, and realized-beta metrics.
-- `plots.py`: explicit orchestration for the complete article figure set.
-- `plot_diagnostics.py`: universe, decile, risk, exposure, and beta figures.
-- `plot_performance.py`: performance, drawdown, and regime figures.
-- `plot_style.py`: shared rendering and export policy.
-- `run.py`: one-command orchestration and artifacts.
