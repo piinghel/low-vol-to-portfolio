@@ -98,7 +98,6 @@ def plot_decile_profile(
         ]
         axis.set_xticks(x, tick_labels)
         clean_axis(axis, plot_config)
-    axes[-1].set_xlabel("Volatility decile")
     finish_figure(figure, path, plot_config, axis_label_size=14.5)
 
 
