@@ -88,7 +88,15 @@ def plot_decile_profile(
             ],
         )
         axis.set_title(title, loc="left", pad=9)
-        axis.set_xticks(x)
+        tick_labels = [
+            "1\nLow-vol"
+            if decile == min(x)
+            else "10\nHigh-vol"
+            if decile == max(x)
+            else str(decile)
+            for decile in x
+        ]
+        axis.set_xticks(x, tick_labels)
         clean_axis(axis, plot_config)
     axes[-1].set_xlabel("Volatility decile")
     finish_figure(figure, path, plot_config, axis_label_size=14.5)

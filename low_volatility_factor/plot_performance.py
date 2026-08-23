@@ -8,6 +8,7 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import polars as pl
 from matplotlib.ticker import FuncFormatter, MaxNLocator, NullFormatter, NullLocator
@@ -204,19 +205,29 @@ def _compound_leg_contribution(
     return leg_periods.select("date", "wealth")
 
 
-def _regime_leg_contributions(
+def _episode_series(
     daily: pl.DataFrame,
     scaled_leg_daily: pl.DataFrame,
     scenario_config: ScenarioConfig,
     *,
     start: date,
     end: date,
-) -> tuple[float, float]:
-    """Return long- and short-book contributions over one regime window."""
+) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+    """Build comparable portfolio, market, and leg paths for one episode."""
 
     window = daily.filter(pl.col("date").is_between(start, end))
     strategy_window = window.filter(
         pl.col("scenario") == scenario_config.volatility_scaled_long_short
+    )
+    strategy = _compound_return_series(
+        strategy_window,
+        "gross_return",
+        baseline_at_first_date=True,
+    )
+    market = _compound_return_series(
+        window.select("date", "market_return").unique("date"),
+        "market_return",
+        baseline_at_first_date=True,
     )
     leg_window = scaled_leg_daily.filter(pl.col("date").is_between(start, end))
     long_leg = _compound_leg_contribution(
@@ -231,15 +242,7 @@ def _regime_leg_contributions(
         "scaled_short_leg",
         baseline_at_first_date=True,
     )
-    long_contribution = require_finite_float(
-        long_leg.get_column("wealth")[-1] - 1.0,
-        "long-book regime contribution",
-    )
-    short_contribution = require_finite_float(
-        short_leg.get_column("wealth")[-1] - 1.0,
-        "short-book regime contribution",
-    )
-    return long_contribution * 100.0, short_contribution * 100.0
+    return strategy, market, long_leg, short_leg
 
 
 def plot_regime_comparison(
@@ -250,103 +253,136 @@ def plot_regime_comparison(
     plot_config: PlotConfig,
     mobile_layout: bool = False,
 ) -> None:
-    """Compare long- and short-book contributions in two difficult rallies."""
+    """Show the dot-com rally, reversal, and the portfolio's two legs."""
 
-    regimes = (
-        (date(1998, 10, 8), date(2000, 3, 9), "Dot-com rally"),
-        (date(2025, 4, 3), date(2026, 5, 27), "Recent rally"),
+    start = date(1998, 10, 8)
+    portfolio_trough = date(2000, 3, 9)
+    end = date(2001, 4, 3)
+    strategy, market, long_leg, short_leg = _episode_series(
+        daily,
+        scaled_leg_daily,
+        scenario_config,
+        start=start,
+        end=end,
     )
-    labels: list[str] = []
-    long_contributions: list[float] = []
-    short_contributions: list[float] = []
-    for start, end, label in regimes:
-        long_contribution, short_contribution = _regime_leg_contributions(
-            daily,
-            scaled_leg_daily,
-            scenario_config,
-            start=start,
-            end=end,
-        )
-        labels.append(label)
-        long_contributions.append(long_contribution)
-        short_contributions.append(short_contribution)
 
-    figure, axis = plt.subplots(
-        figsize=(5.2, 3.7) if mobile_layout else (9.0, 3.5),
+    figure, axes = plt.subplots(
+        2,
+        1,
+        figsize=(5.2, 7.4) if mobile_layout else (9.0, 6.0),
+        sharex=True,
+        gridspec_kw={"height_ratios": [1.25, 1.0], "hspace": 0.12},
     )
-    positions = list(range(len(labels)))
-    bar_height = 0.24
-    long_positions = [position - bar_height / 1.6 for position in positions]
-    short_positions = [position + bar_height / 1.6 for position in positions]
-    long_bars = axis.barh(
-        long_positions,
-        long_contributions,
-        height=bar_height,
-        label="Long book",
+    wealth_axis, legs_axis = axes
+    wealth_axis.plot(
+        market.get_column("date").to_list(),
+        market.get_column("wealth"),
+        label="Russell 1000",
+        color=plot_config.naive_long_short_color,
+        linewidth=1.5,
+    )
+    wealth_axis.plot(
+        strategy.get_column("date").to_list(),
+        strategy.get_column("wealth"),
+        label="Low-vol portfolio",
         color=plot_config.volatility_scaled_color,
+        linewidth=1.7,
     )
-    short_bars = axis.barh(
-        short_positions,
-        short_contributions,
-        height=bar_height,
+    legs_axis.plot(
+        long_leg.get_column("date").to_list(),
+        (long_leg.get_column("wealth") - 1.0) * 100.0,
+        label="Long book",
+        color=plot_config.low_volatility_color,
+        linewidth=1.5,
+    )
+    legs_axis.plot(
+        short_leg.get_column("date").to_list(),
+        (short_leg.get_column("wealth") - 1.0) * 100.0,
         label="Short book",
         color=plot_config.high_volatility_color,
+        linewidth=1.5,
     )
-    axis.set_yticks(positions, labels)
-    axis.invert_yaxis()
-    axis.set_xlabel("Gross-return contribution (pp)")
-    axis.xaxis.set_major_locator(MaxNLocator(nbins=6 if not mobile_layout else 5))
-    axis.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.0f}"))
-    axis.axvline(
-        0,
-        color=plot_config.zero_line_color,
-        linewidth=0.9,
+
+    wealth_axis.set_ylabel("Cumulative wealth")
+    wealth_axis.yaxis.set_major_locator(MaxNLocator(nbins=5))
+    wealth_axis.yaxis.set_major_formatter(
+        FuncFormatter(lambda value, _: f"{value:.2f}".rstrip("0").rstrip(".") + "×")
     )
-    clean_axis(axis, plot_config)
-    axis.grid(False)
-    axis.grid(axis="x", color=plot_config.grid_color, linewidth=0.8)
-    axis.set_axisbelow(True)
+    legs_axis.set_ylabel("Contribution (pp)")
+    legs_axis.yaxis.set_major_locator(MaxNLocator(nbins=5))
+    legs_axis.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:+.0f}"))
+    legs_axis.axhline(0, color=plot_config.zero_line_color, linewidth=0.9)
 
-    values = long_contributions + short_contributions
-    axis.set_xlim(min(values) - 8.0, max(values) + 8.0)
-    label_offset = 0.9 if mobile_layout else 1.2
-    for bars in (long_bars, short_bars):
-        for bar in bars:
-            value = require_finite_float(bar.get_width(), "regime contribution label")
-            axis.text(
-                value + (label_offset if value >= 0 else -label_offset),
-                bar.get_y() + bar.get_height() / 2,
-                f"{value:+.1f}",
-                ha="left" if value >= 0 else "right",
-                va="center",
-                color=plot_config.text_color,
-                fontsize=9.8 if mobile_layout else 10.6,
-            )
+    for axis in axes:
+        axis.set_xlim(start, end)
+        axis.axvspan(start, portfolio_trough, color=plot_config.grid_color, alpha=0.18)
+        axis.axvline(
+            portfolio_trough,
+            color=plot_config.zero_line_color,
+            linewidth=0.9,
+        )
+        clean_axis(axis, plot_config)
+    wealth_axis.text(
+        portfolio_trough,
+        0.97,
+        "9 Mar 2000\nportfolio trough",
+        transform=wealth_axis.get_xaxis_transform(),
+        ha="right",
+        va="top",
+        color=plot_config.muted_text_color,
+        fontsize=10.0,
+    )
+    wealth_axis.text(
+        date(1999, 5, 1),
+        0.06,
+        "Market rally\nfactor drawdown",
+        transform=wealth_axis.get_xaxis_transform(),
+        color=plot_config.muted_text_color,
+        fontsize=10.0,
+    )
+    wealth_axis.text(
+        date(2000, 8, 15),
+        0.06,
+        "Factor recovery",
+        transform=wealth_axis.get_xaxis_transform(),
+        color=plot_config.muted_text_color,
+        fontsize=10.0,
+    )
+    legs_axis.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+    legs_axis.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
 
+    handles = []
+    labels = []
+    for axis in axes:
+        axis_handles, axis_labels = axis.get_legend_handles_labels()
+        handles.extend(axis_handles)
+        labels.extend(axis_labels)
     legend = figure.legend(
-        *axis.get_legend_handles_labels(),
+        handles,
+        labels,
         loc="upper center",
-        bbox_to_anchor=(0.5, 0.97),
-        ncol=2,
+        bbox_to_anchor=(0.5, 0.985),
+        ncol=2 if mobile_layout else 4,
         frameon=False,
-        columnspacing=2.2,
-        handlelength=2.3,
-        fontsize=10.9 if not mobile_layout else 10.0,
+        columnspacing=1.8,
+        handlelength=2.1,
+        fontsize=10.0 if mobile_layout else 10.5,
     )
     for label in legend.get_texts():
         label.set_color(plot_config.text_color)
     figure.subplots_adjust(
-        left=0.30 if mobile_layout else 0.19,
-        right=0.95,
-        bottom=0.24,
-        top=0.79,
+        left=0.19 if mobile_layout else 0.11,
+        right=0.98,
+        bottom=0.10,
+        top=0.88,
+        hspace=0.12,
     )
     finish_figure(
         figure,
         path,
         plot_config,
         tight_layout=False,
-        tick_label_size=11.2 if not mobile_layout else 10.0,
-        axis_label_size=11.8 if not mobile_layout else 10.5,
-        legend_size=10.9 if not mobile_layout else 10.0,
+        tick_label_size=10.4 if not mobile_layout else 10.0,
+        axis_label_size=11.5 if not mobile_layout else 11.0,
+        legend_size=10.5 if not mobile_layout else 10.0,
     )
