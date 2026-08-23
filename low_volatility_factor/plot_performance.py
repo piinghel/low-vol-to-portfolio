@@ -296,7 +296,7 @@ def plot_regime_comparison(
     axis.invert_yaxis()
     axis.set_xlabel("Gross-return contribution (pp)")
     axis.xaxis.set_major_locator(MaxNLocator(nbins=6 if not mobile_layout else 5))
-    axis.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.0f}%"))
+    axis.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.0f}"))
     axis.axvline(
         0,
         color=plot_config.zero_line_color,
