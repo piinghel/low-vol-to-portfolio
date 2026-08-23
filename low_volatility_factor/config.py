@@ -154,7 +154,6 @@ class ScenarioConfig:
 
 @dataclass(frozen=True)
 class PlotConfig:
-    raster_dpi: int = 500
     decile_profile_color: str = "#B2BBC3"
     low_volatility_color: str = "#4F7396"
     high_volatility_color: str = "#756A8E"

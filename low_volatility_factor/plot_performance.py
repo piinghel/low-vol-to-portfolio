@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from math import ceil, floor
 from pathlib import Path
 
@@ -291,7 +291,7 @@ def plot_regime_comparison(
             4,
             1,
             figsize=(5.2, 11.2),
-            gridspec_kw={"height_ratios": [1.2, 1.0, 1.2, 1.0], "hspace": 0.42},
+            gridspec_kw={"height_ratios": [1.15, 1.0, 1.15, 1.0]},
         )
         episode_axes = (
             (flat_axes[0], flat_axes[1]),
@@ -302,15 +302,11 @@ def plot_regime_comparison(
             2,
             2,
             figsize=(12.0, 7.8),
-            gridspec_kw={
-                "height_ratios": [1.0, 1.0],
-                "hspace": 0.34,
-                "wspace": 0.18,
-            },
+            gridspec_kw={"height_ratios": [1.12, 1.0]},
         )
         episode_axes = (
-            (axes[0, 0], axes[0, 1]),
-            (axes[1, 0], axes[1, 1]),
+            (axes[0, 0], axes[1, 0]),
+            (axes[0, 1], axes[1, 1]),
         )
 
     for episode_index, ((episode, series), (wealth_axis, legs_axis)) in enumerate(
@@ -351,58 +347,48 @@ def plot_regime_comparison(
             linewidth=1.5,
         )
 
-        label_size = 8.5 if mobile_layout else 8.8
-        label_box = {
-            "facecolor": plot_config.background_color,
-            "edgecolor": "none",
-            "pad": 1.2,
-            "alpha": 0.84,
-        }
-        for axis, dates, values, label, color, offset in (
+        label_size = 8.7 if mobile_layout else 9.4
+        label_date = end + (end - start) * 0.025
+        for axis, values, label, color, offset in (
             (
                 wealth_axis,
-                market_dates,
                 market_wealth,
                 "Russell 1000",
                 plot_config.muted_text_color,
-                7,
+                4,
             ),
             (
                 wealth_axis,
-                strategy_dates,
                 strategy_wealth,
-                "Low-vol portfolio",
+                "Low-vol",
                 plot_config.volatility_scaled_color,
-                -7,
+                -4,
             ),
             (
                 legs_axis,
-                long_dates,
                 long_contribution,
-                "Long book",
+                "Long low-vol",
                 plot_config.low_volatility_color,
-                7,
+                4,
             ),
             (
                 legs_axis,
-                short_dates,
                 short_contribution,
-                "Short book",
+                "Short high-vol",
                 plot_config.high_volatility_color,
-                -7,
+                -4,
             ),
         ):
             axis.annotate(
                 label,
-                (dates[-1], values[-1]),
-                xytext=(-5, offset),
+                (label_date, values[-1]),
+                xytext=(0, offset),
                 textcoords="offset points",
-                ha="right",
+                ha="left",
                 va="center",
                 color=color,
                 fontsize=label_size,
                 fontweight=600,
-                bbox=label_box,
             )
 
         wealth_axis.set_title(
@@ -414,12 +400,17 @@ def plot_regime_comparison(
             fontweight=600,
         )
         for axis in (wealth_axis, legs_axis):
-            axis.set_xlim(start, end)
-            axis.xaxis.set_major_locator(mdates.MonthLocator(interval=tick_months))
+            tick_locator = mdates.MonthLocator(interval=tick_months)
+            axis.set_xticks(
+                tick_locator.tick_values(
+                    datetime.combine(start, time.min),
+                    datetime.combine(end, time.min),
+                )
+            )
             axis.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
+            axis.set_xlim(start, end + (end - start) * 0.18)
             clean_axis(axis, plot_config)
-        if mobile_layout:
-            wealth_axis.tick_params(axis="x", labelbottom=False)
+        wealth_axis.tick_params(axis="x", labelbottom=False)
         episode_wealth = market_wealth + strategy_wealth + [1.0]
         wealth_axis.set_ylim(
             floor((min(episode_wealth) - 0.02) / 0.05) * 0.05,
@@ -436,10 +427,11 @@ def plot_regime_comparison(
         )
         legs_axis.yaxis.set_major_locator(MaxNLocator(nbins=4))
         legs_axis.yaxis.set_major_formatter(
-            FuncFormatter(lambda value, _: f"{value:+.0f}")
+            FuncFormatter(lambda value, _: f"{value:+.0f} pp")
         )
-        wealth_axis.set_ylabel("Wealth\n(start = 1×)")
-        legs_axis.set_ylabel("Contribution\n(pp)")
+        if not mobile_layout and episode_index == 0:
+            wealth_axis.set_ylabel("Wealth")
+            legs_axis.set_ylabel("Contribution")
         if turn is not None:
             for axis in (wealth_axis, legs_axis):
                 axis.axvline(
@@ -449,12 +441,12 @@ def plot_regime_comparison(
                     linestyle=(0, (2, 3)),
                 )
     figure.subplots_adjust(
-        left=0.19 if mobile_layout else 0.11,
+        left=0.14 if mobile_layout else 0.10,
         right=0.98,
-        bottom=0.07 if mobile_layout else 0.09,
-        top=0.97 if mobile_layout else 0.95,
-        hspace=0.42 if mobile_layout else 0.34,
-        wspace=0.18,
+        bottom=0.06 if mobile_layout else 0.07,
+        top=0.97 if mobile_layout else 0.96,
+        hspace=0.43 if mobile_layout else 0.32,
+        wspace=0.20,
     )
     finish_figure(
         figure,

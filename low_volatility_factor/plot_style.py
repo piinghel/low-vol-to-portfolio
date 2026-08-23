@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 
 import matplotlib
@@ -11,6 +12,26 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from .config import PlotConfig
+
+
+def dark_plot_config(plot_config: PlotConfig) -> PlotConfig:
+    """Return the same visual grammar tuned for the website's dark surface."""
+
+    return replace(
+        plot_config,
+        decile_profile_color="#8B949E",
+        low_volatility_color="#78A0C4",
+        high_volatility_color="#A093B8",
+        naive_long_short_color="#8B949E",
+        volatility_scaled_color="#78A0C4",
+        realized_beta_color="#B8C1C9",
+        ex_ante_beta_color="#66717C",
+        text_color="#C9D1D9",
+        muted_text_color="#8B949E",
+        grid_color="#30363D",
+        background_color="#0D1117",
+        zero_line_color="#6E7681",
+    )
 
 
 def finish_figure(
@@ -53,7 +74,6 @@ def finish_figure(
     figure.savefig(
         path,
         format=path.suffix.removeprefix("."),
-        dpi=plot_config.raster_dpi,
         bbox_inches="tight",
         pad_inches=0.03,
         facecolor=plot_config.background_color,
@@ -75,13 +95,22 @@ def render_layout_pair(
     figures: Path,
     stem: str,
     renderer: Callable[..., None],
+    *,
+    variant_suffix: str = "",
+    extension: str = ".svg",
 ) -> None:
-    """Render the desktop and mobile PNGs used by the article."""
+    """Render desktop and mobile variants used by the article."""
 
     with plt.rc_context(
         {
             "font.family": "DejaVu Sans",
         }
     ):
-        renderer(path=figures / f"{stem}.png", mobile_layout=False)
-        renderer(path=figures / f"{stem}_mobile.png", mobile_layout=True)
+        renderer(
+            path=figures / f"{stem}{variant_suffix}{extension}",
+            mobile_layout=False,
+        )
+        renderer(
+            path=figures / f"{stem}_mobile{variant_suffix}{extension}",
+            mobile_layout=True,
+        )
