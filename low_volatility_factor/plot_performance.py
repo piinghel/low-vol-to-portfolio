@@ -253,115 +253,163 @@ def plot_regime_comparison(
     plot_config: PlotConfig,
     mobile_layout: bool = False,
 ) -> None:
-    """Show the dot-com rally, reversal, and the portfolio's two legs."""
+    """Contrast a completed rally/reversal with the still-open recent rally."""
 
-    start = date(1998, 10, 8)
-    portfolio_trough = date(2000, 3, 9)
-    end = date(2001, 4, 3)
-    strategy, market, long_leg, short_leg = _episode_series(
-        daily,
-        scaled_leg_daily,
-        scenario_config,
-        start=start,
-        end=end,
+    episodes: tuple[tuple[date, date, date | None, str, int], ...] = (
+        (
+            date(1998, 10, 8),
+            date(2001, 4, 3),
+            date(2000, 3, 9),
+            "A  Dot-com: rally, then reversal",
+            6,
+        ),
+        (
+            date(2025, 4, 3),
+            date(2026, 5, 27),
+            None,
+            "B  Recent rally: no reversal yet",
+            3,
+        ),
     )
-
-    figure, axes = plt.subplots(
-        2,
-        1,
-        figsize=(5.2, 7.4) if mobile_layout else (9.0, 6.0),
-        sharex=True,
-        gridspec_kw={"height_ratios": [1.25, 1.0], "hspace": 0.12},
-    )
-    wealth_axis, legs_axis = axes
-    wealth_axis.plot(
-        market.get_column("date").to_list(),
-        market.get_column("wealth"),
-        label="Russell 1000",
-        color=plot_config.naive_long_short_color,
-        linewidth=1.5,
-    )
-    wealth_axis.plot(
-        strategy.get_column("date").to_list(),
-        strategy.get_column("wealth"),
-        label="Low-vol portfolio",
-        color=plot_config.volatility_scaled_color,
-        linewidth=1.7,
-    )
-    legs_axis.plot(
-        long_leg.get_column("date").to_list(),
-        (long_leg.get_column("wealth") - 1.0) * 100.0,
-        label="Long book",
-        color=plot_config.low_volatility_color,
-        linewidth=1.5,
-    )
-    legs_axis.plot(
-        short_leg.get_column("date").to_list(),
-        (short_leg.get_column("wealth") - 1.0) * 100.0,
-        label="Short book",
-        color=plot_config.high_volatility_color,
-        linewidth=1.5,
-    )
-
-    wealth_axis.set_ylabel("Cumulative wealth")
-    wealth_axis.yaxis.set_major_locator(MaxNLocator(nbins=5))
-    wealth_axis.yaxis.set_major_formatter(
-        FuncFormatter(lambda value, _: f"{value:.2f}".rstrip("0").rstrip(".") + "×")
-    )
-    legs_axis.set_ylabel("Contribution (pp)")
-    legs_axis.yaxis.set_major_locator(MaxNLocator(nbins=5))
-    legs_axis.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:+.0f}"))
-    legs_axis.axhline(0, color=plot_config.zero_line_color, linewidth=0.9)
-
-    for axis in axes:
-        axis.set_xlim(start, end)
-        axis.axvspan(start, portfolio_trough, color=plot_config.grid_color, alpha=0.18)
-        axis.axvline(
-            portfolio_trough,
-            color=plot_config.zero_line_color,
-            linewidth=0.9,
+    episode_series = [
+        (
+            (start, end, turn, title, tick_months),
+            _episode_series(
+                daily,
+                scaled_leg_daily,
+                scenario_config,
+                start=start,
+                end=end,
+            ),
         )
-        clean_axis(axis, plot_config)
-    wealth_axis.text(
-        portfolio_trough,
-        0.97,
-        "9 Mar 2000\nportfolio trough",
-        transform=wealth_axis.get_xaxis_transform(),
-        ha="right",
-        va="top",
-        color=plot_config.muted_text_color,
-        fontsize=10.0,
-    )
-    wealth_axis.text(
-        date(1999, 5, 1),
-        0.06,
-        "Market rally\nfactor drawdown",
-        transform=wealth_axis.get_xaxis_transform(),
-        color=plot_config.muted_text_color,
-        fontsize=10.0,
-    )
-    wealth_axis.text(
-        date(2000, 8, 15),
-        0.06,
-        "Factor recovery",
-        transform=wealth_axis.get_xaxis_transform(),
-        color=plot_config.muted_text_color,
-        fontsize=10.0,
-    )
-    legs_axis.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
-    legs_axis.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
+        for start, end, turn, title, tick_months in episodes
+    ]
 
-    handles = []
-    labels = []
-    for axis in axes:
-        axis_handles, axis_labels = axis.get_legend_handles_labels()
-        handles.extend(axis_handles)
-        labels.extend(axis_labels)
+    if mobile_layout:
+        figure, flat_axes = plt.subplots(
+            4,
+            1,
+            figsize=(5.2, 11.2),
+            gridspec_kw={"height_ratios": [1.2, 1.0, 1.2, 1.0], "hspace": 0.42},
+        )
+        episode_axes = (
+            (flat_axes[0], flat_axes[1]),
+            (flat_axes[2], flat_axes[3]),
+        )
+    else:
+        figure, axes = plt.subplots(
+            2,
+            2,
+            figsize=(12.0, 7.2),
+            gridspec_kw={
+                "height_ratios": [1.2, 1.0],
+                "hspace": 0.16,
+                "wspace": 0.18,
+            },
+        )
+        episode_axes = (
+            (axes[0, 0], axes[1, 0]),
+            (axes[0, 1], axes[1, 1]),
+        )
+
+    all_wealth: list[float] = []
+    all_contributions: list[float] = []
+    for _, (strategy, market, long_leg, short_leg) in episode_series:
+        all_wealth.extend(strategy.get_column("wealth").to_list())
+        all_wealth.extend(market.get_column("wealth").to_list())
+        all_contributions.extend(
+            ((long_leg.get_column("wealth") - 1.0) * 100.0).to_list()
+        )
+        all_contributions.extend(
+            ((short_leg.get_column("wealth") - 1.0) * 100.0).to_list()
+        )
+    wealth_padding = 0.05 * (max(all_wealth) - min(all_wealth))
+    contribution_padding = 0.07 * (max(all_contributions) - min(all_contributions))
+
+    for episode_index, ((episode, series), (wealth_axis, legs_axis)) in enumerate(
+        zip(episode_series, episode_axes, strict=True)
+    ):
+        start, end, turn, title, tick_months = episode
+        strategy, market, long_leg, short_leg = series
+        wealth_axis.plot(
+            market.get_column("date").to_list(),
+            market.get_column("wealth"),
+            label="Russell 1000",
+            color=plot_config.naive_long_short_color,
+            linewidth=1.5,
+        )
+        wealth_axis.plot(
+            strategy.get_column("date").to_list(),
+            strategy.get_column("wealth"),
+            label="Low-vol portfolio",
+            color=plot_config.volatility_scaled_color,
+            linewidth=1.7,
+        )
+        legs_axis.plot(
+            long_leg.get_column("date").to_list(),
+            (long_leg.get_column("wealth") - 1.0) * 100.0,
+            label="Long book",
+            color=plot_config.low_volatility_color,
+            linewidth=1.5,
+        )
+        legs_axis.plot(
+            short_leg.get_column("date").to_list(),
+            (short_leg.get_column("wealth") - 1.0) * 100.0,
+            label="Short book",
+            color=plot_config.high_volatility_color,
+            linewidth=1.5,
+        )
+
+        wealth_axis.set_title(
+            title,
+            loc="left",
+            pad=10,
+            color=plot_config.text_color,
+            fontsize=11.4 if mobile_layout else 12.0,
+            fontweight=600,
+        )
+        for axis in (wealth_axis, legs_axis):
+            axis.set_xlim(start, end)
+            axis.xaxis.set_major_locator(mdates.MonthLocator(interval=tick_months))
+            axis.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
+            clean_axis(axis, plot_config)
+        wealth_axis.tick_params(axis="x", labelbottom=False)
+        wealth_axis.set_ylim(
+            min(all_wealth) - wealth_padding,
+            max(all_wealth) + wealth_padding,
+        )
+        wealth_axis.yaxis.set_major_locator(MaxNLocator(nbins=4))
+        wealth_axis.yaxis.set_major_formatter(
+            FuncFormatter(lambda value, _: f"{value:.2f}".rstrip("0").rstrip(".") + "×")
+        )
+        legs_axis.set_ylim(
+            min(all_contributions) - contribution_padding,
+            max(all_contributions) + contribution_padding,
+        )
+        legs_axis.yaxis.set_major_locator(MaxNLocator(nbins=4))
+        legs_axis.yaxis.set_major_formatter(
+            FuncFormatter(lambda value, _: f"{value:+.0f}")
+        )
+        legs_axis.axhline(0, color=plot_config.zero_line_color, linewidth=0.9)
+
+        if mobile_layout or episode_index == 0:
+            wealth_axis.set_ylabel("Wealth\n(start = 1×)")
+            legs_axis.set_ylabel("Contribution\n(pp)")
+        if turn is not None:
+            for axis in (wealth_axis, legs_axis):
+                axis.axvline(
+                    turn,
+                    color=plot_config.zero_line_color,
+                    linewidth=0.9,
+                )
+
+    wealth_handles, wealth_labels = episode_axes[0][0].get_legend_handles_labels()
+    leg_handles, leg_labels = episode_axes[0][1].get_legend_handles_labels()
     legend = figure.legend(
-        handles,
-        labels,
+        wealth_handles + leg_handles,
+        wealth_labels + leg_labels,
         loc="upper center",
-        bbox_to_anchor=(0.5, 0.985),
+        bbox_to_anchor=(0.5, 0.995),
         ncol=2 if mobile_layout else 4,
         frameon=False,
         columnspacing=1.8,
@@ -373,9 +421,10 @@ def plot_regime_comparison(
     figure.subplots_adjust(
         left=0.19 if mobile_layout else 0.11,
         right=0.98,
-        bottom=0.10,
-        top=0.88,
-        hspace=0.12,
+        bottom=0.07 if mobile_layout else 0.09,
+        top=0.91 if mobile_layout else 0.88,
+        hspace=0.42 if mobile_layout else 0.16,
+        wspace=0.18,
     )
     finish_figure(
         figure,
