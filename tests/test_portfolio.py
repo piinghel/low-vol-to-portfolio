@@ -15,7 +15,7 @@ from low_volatility_factor.config import (
     SignalConfig,
     SizingConfig,
 )
-from low_volatility_factor.portfolio import (
+from low_volatility_factor.portfolio_targets import (
     build_stage_targets,
     summarize_target_exposures,
 )

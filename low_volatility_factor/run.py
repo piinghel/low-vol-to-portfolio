@@ -15,6 +15,7 @@ import matplotlib
 import numpy as np
 import polars as pl
 
+from .article_figures import render_article_figures
 from .backtest import (
     build_execution_schedule,
     map_dates_to_signal_periods,
@@ -30,20 +31,19 @@ from .data import (
     prepare_index_returns,
     resolve_input_files,
 )
-from .frames import require_finite_float
+from .features import (
+    assign_volatility_buckets,
+    compute_selection_volatility,
+    compute_sizing_volatility,
+    compute_trailing_market_beta,
+)
+from .frame_validation import require_finite_float
 from .metrics import compute_simple_metrics, compute_stage_metrics
-from .plots import render_article_figures
-from .portfolio import (
+from .portfolio_targets import (
     build_decile_targets,
     build_stage_targets,
     select_rebalance_signal_dates,
     summarize_target_exposures,
-)
-from .risk import compute_trailing_market_beta
-from .signals import (
-    assign_volatility_buckets,
-    compute_selection_volatility,
-    compute_sizing_volatility,
 )
 
 

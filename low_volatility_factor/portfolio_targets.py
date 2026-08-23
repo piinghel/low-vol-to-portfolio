@@ -12,7 +12,7 @@ from .config import (
     SignalConfig,
     SizingConfig,
 )
-from .frames import Frame, as_lazy, require_columns
+from .frame_validation import Frame, as_lazy, require_columns
 
 
 def _equal_weight_scenario(

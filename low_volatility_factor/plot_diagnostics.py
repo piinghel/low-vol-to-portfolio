@@ -12,7 +12,7 @@ import polars as pl
 from matplotlib.ticker import FuncFormatter
 
 from .config import BetaConfig, PlotConfig, ScenarioConfig
-from .frames import require_finite_float
+from .frame_validation import require_finite_float
 from .plot_style import clean_axis, finish_figure
 
 

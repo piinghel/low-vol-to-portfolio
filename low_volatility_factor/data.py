@@ -8,7 +8,7 @@ from pathlib import Path
 import polars as pl
 
 from .config import DataConfig
-from .frames import Frame, as_lazy, require_columns
+from .frame_validation import Frame, as_lazy, require_columns
 
 
 def resolve_input_files(data_root: Path, pattern: str) -> list[Path]:

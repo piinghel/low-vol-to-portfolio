@@ -6,10 +6,16 @@ from typing import cast
 
 import polars as pl
 
-from low_volatility_factor.config import BucketConfig, DataConfig, SignalConfig
-from low_volatility_factor.signals import (
+from low_volatility_factor.config import (
+    BetaConfig,
+    BucketConfig,
+    DataConfig,
+    SignalConfig,
+)
+from low_volatility_factor.features import (
     assign_volatility_buckets,
     compute_selection_volatility,
+    compute_trailing_market_beta,
 )
 
 
@@ -28,7 +34,7 @@ def _price_frame(number_of_days: int = 20) -> pl.DataFrame:
     )
 
 
-class SignalTests(unittest.TestCase):
+class FeatureTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.data_config = DataConfig(data_root=Path(self.temp_dir.name))
@@ -99,6 +105,30 @@ class SignalTests(unittest.TestCase):
                 .min(),
             ),
         )
+
+
+class MarketBetaTests(unittest.TestCase):
+    def test_flat_market_produces_null_instead_of_nan_beta(self) -> None:
+        dates = [dt.date(2024, 1, 1) + dt.timedelta(days=offset) for offset in range(3)]
+        asset_returns = pl.DataFrame(
+            {
+                "date": dates,
+                "asset_id_bb_global": ["A"] * 3,
+                "total_return": [0.01, 0.02, 0.03],
+            }
+        )
+        market_returns = pl.DataFrame({"date": dates, "market_return": [0.0, 0.0, 0.0]})
+
+        result = compute_trailing_market_beta(
+            asset_returns,
+            market_returns,
+            DataConfig(data_root=Path(".")),
+            BetaConfig(lookback=2, minimum_observations=2),
+        ).collect()
+
+        betas = result.get_column("stock_beta")
+        self.assertEqual(betas.null_count(), result.height)
+        self.assertEqual(betas.is_nan().sum(), 0)
 
 
 if __name__ == "__main__":

@@ -156,7 +156,7 @@ class ScenarioConfig:
 class PlotConfig:
     raster_dpi: int = 500
     decile_profile_color: str = "#B2BBC3"
-    low_volatility_color: str = "#3C8C83"
+    low_volatility_color: str = "#4F7396"
     high_volatility_color: str = "#D66A60"
     naive_long_short_color: str = "#9AA6AF"
     volatility_scaled_color: str = "#345B7E"

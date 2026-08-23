@@ -7,7 +7,7 @@ import math
 import numpy as np
 import polars as pl
 
-from .frames import require_finite_float
+from .frame_validation import require_finite_float
 
 
 def _metric_row(
