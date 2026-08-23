@@ -259,12 +259,6 @@ def plot_beta_diagnostic(
         color=plot_config.realized_beta_color,
         linewidth=1.6,
     )
-    axis.axhline(
-        0,
-        color=plot_config.zero_line_color,
-        linewidth=0.8,
-        linestyle=":",
-    )
     axis.set_ylabel("Beta")
     axis.legend(frameon=False, ncol=1 if mobile_layout else 2)
     clean_axis(axis, plot_config)
