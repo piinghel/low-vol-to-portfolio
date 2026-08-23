@@ -78,16 +78,10 @@ def render_article_figures(
             ),
         }
 
-    renderers = figure_renderers(config.plots)
-    for stem, renderer in renderers.items():
-        render_layout_pair(figures, stem, renderer)
-
-    dark_renderers = figure_renderers(dark_plot_config(config.plots))
-    for stem, renderer in dark_renderers.items():
-        render_layout_pair(
-            figures,
-            stem,
-            renderer,
-            variant_suffix="_dark",
-            extension=".svg",
-        )
+    variants = (
+        (config.plots, ""),
+        (dark_plot_config(config.plots), "_dark"),
+    )
+    for plot_config, suffix in variants:
+        for stem, renderer in figure_renderers(plot_config).items():
+            render_layout_pair(figures, stem, renderer, variant_suffix=suffix)

@@ -97,9 +97,8 @@ def render_layout_pair(
     renderer: Callable[..., None],
     *,
     variant_suffix: str = "",
-    extension: str = ".svg",
 ) -> None:
-    """Render desktop and mobile variants used by the article."""
+    """Render the desktop and mobile SVGs used by the article."""
 
     with plt.rc_context(
         {
@@ -107,10 +106,10 @@ def render_layout_pair(
         }
     ):
         renderer(
-            path=figures / f"{stem}{variant_suffix}{extension}",
+            path=figures / f"{stem}{variant_suffix}.svg",
             mobile_layout=False,
         )
         renderer(
-            path=figures / f"{stem}_mobile{variant_suffix}{extension}",
+            path=figures / f"{stem}_mobile{variant_suffix}.svg",
             mobile_layout=True,
         )
