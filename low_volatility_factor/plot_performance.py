@@ -260,7 +260,7 @@ def plot_regime_comparison(
         (date(2025, 4, 3), date(2026, 5, 27), "2025–2026"),
     )
     if mobile_layout:
-        figure, flat_axes = plt.subplots(4, 1, figsize=(5.2, 12.0))
+        figure, flat_axes = plt.subplots(4, 1, figsize=(5.2, 10.8))
         axes = ((flat_axes[0], flat_axes[1]), (flat_axes[2], flat_axes[3]))
     else:
         figure, axes = plt.subplots(
@@ -364,7 +364,7 @@ def plot_regime_comparison(
         right=0.99,
         bottom=0.10,
         top=0.89,
-        hspace=0.42 if mobile_layout else 0.22,
+        hspace=0.24 if mobile_layout else 0.22,
         wspace=0.18 if mobile_layout else 0.24,
     )
     finish_figure(

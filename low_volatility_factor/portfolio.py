@@ -16,11 +16,11 @@ from .frames import Frame, as_lazy, require_columns
 
 
 def _equal_weight_scenario(
-    candidates: pl.LazyFrame,
+    candidates: pl.DataFrame,
     *,
     scenario: str,
     signed: bool,
-) -> pl.LazyFrame:
+) -> pl.DataFrame:
     """Build 1/N weights, optionally signed by long/short leg."""
 
     group_columns = ["signal_date", "leg"]
