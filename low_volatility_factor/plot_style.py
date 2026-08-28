@@ -91,25 +91,18 @@ def clean_axis(axis: plt.Axes, plot_config: PlotConfig) -> None:
     axis.margins(x=0)
 
 
-def render_layout_pair(
+def render_figure(
     figures: Path,
     stem: str,
     renderer: Callable[..., None],
     *,
     variant_suffix: str = "",
 ) -> None:
-    """Render the desktop and mobile SVGs used by the article."""
+    """Render the shared SVG layout used at every viewport width."""
 
     with plt.rc_context(
         {
             "font.family": "DejaVu Sans",
         }
     ):
-        renderer(
-            path=figures / f"{stem}{variant_suffix}.svg",
-            mobile_layout=False,
-        )
-        renderer(
-            path=figures / f"{stem}_mobile{variant_suffix}.svg",
-            mobile_layout=True,
-        )
+        renderer(path=figures / f"{stem}{variant_suffix}.svg")

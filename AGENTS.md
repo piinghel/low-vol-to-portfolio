@@ -20,10 +20,10 @@ portfolio-construction article.
 - Keep article figures minimal and free of embedded titles. Use subtle grids
   and consistent colors across related plots.
 - Let date-formatted ticks communicate time; omit generic `Date` x-axis labels.
-- Figure 4 must show realized floating exposure. Figure 7 is one 2-by-2 regime
+- Figure 3 must show realized floating exposure. Figure 6 is one 2-by-2 regime
   figure with dot-com on the left, the AI rally on the right, and a single
   caption; do not restore a separate Figure 8.
-- Publish desktop/mobile and light/dark figures as SVGs only.
+- Publish one shared figure layout in light and dark SVG variants.
 - Prefer small, explicit changes over speculative abstractions.
 
 ## Checks

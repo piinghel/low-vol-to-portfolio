@@ -50,7 +50,6 @@ def plot_performance_and_drawdowns(
     path: Path,
     scenario_config: ScenarioConfig,
     plot_config: PlotConfig,
-    mobile_layout: bool = False,
 ) -> None:
     """Plot cumulative wealth and drawdowns in one aligned figure."""
 
@@ -61,7 +60,7 @@ def plot_performance_and_drawdowns(
     figure, axes = plt.subplots(
         2,
         1,
-        figsize=(5.2, 7.4) if mobile_layout else (9.0, 7.2),
+        figsize=(9.0, 7.2),
         sharex=True,
         gridspec_kw={"height_ratios": [2.1, 1.0], "hspace": 0.08},
     )
@@ -252,7 +251,6 @@ def plot_regime_comparison(
     path: Path,
     scenario_config: ScenarioConfig,
     plot_config: PlotConfig,
-    mobile_layout: bool = False,
 ) -> None:
     """Contrast a completed rally/reversal with the still-open recent rally."""
 
@@ -286,28 +284,16 @@ def plot_regime_comparison(
         for start, end, turn, title, tick_months in episodes
     ]
 
-    if mobile_layout:
-        figure, flat_axes = plt.subplots(
-            4,
-            1,
-            figsize=(5.2, 11.2),
-            gridspec_kw={"height_ratios": [1.15, 1.0, 1.15, 1.0]},
-        )
-        episode_axes = (
-            (flat_axes[0], flat_axes[1]),
-            (flat_axes[2], flat_axes[3]),
-        )
-    else:
-        figure, axes = plt.subplots(
-            2,
-            2,
-            figsize=(12.0, 7.8),
-            gridspec_kw={"height_ratios": [1.12, 1.0]},
-        )
-        episode_axes = (
-            (axes[0, 0], axes[1, 0]),
-            (axes[0, 1], axes[1, 1]),
-        )
+    figure, axes = plt.subplots(
+        2,
+        2,
+        figsize=(12.0, 7.8),
+        gridspec_kw={"height_ratios": [1.12, 1.0]},
+    )
+    episode_axes = (
+        (axes[0, 0], axes[1, 0]),
+        (axes[0, 1], axes[1, 1]),
+    )
 
     for episode_index, ((episode, series), (wealth_axis, legs_axis)) in enumerate(
         zip(episode_series, episode_axes, strict=True)
@@ -347,7 +333,7 @@ def plot_regime_comparison(
             linewidth=1.5,
         )
 
-        label_size = 8.7 if mobile_layout else 9.4
+        label_size = 9.4
         label_date = end + (end - start) * 0.025
         for axis, values, label, color, offset in (
             (
@@ -396,7 +382,7 @@ def plot_regime_comparison(
             loc="left",
             pad=10,
             color=plot_config.text_color,
-            fontsize=11.4 if mobile_layout else 12.0,
+            fontsize=12.0,
             fontweight=600,
         )
         for axis in (wealth_axis, legs_axis):
@@ -429,7 +415,7 @@ def plot_regime_comparison(
         legs_axis.yaxis.set_major_formatter(
             FuncFormatter(lambda value, _: f"{value:+.0f} pp")
         )
-        if not mobile_layout and episode_index == 0:
+        if episode_index == 0:
             wealth_axis.set_ylabel("Wealth")
             legs_axis.set_ylabel("Contribution")
         if turn is not None:
@@ -441,11 +427,11 @@ def plot_regime_comparison(
                     linestyle=(0, (2, 3)),
                 )
     figure.subplots_adjust(
-        left=0.14 if mobile_layout else 0.10,
+        left=0.10,
         right=0.98,
-        bottom=0.06 if mobile_layout else 0.07,
-        top=0.97 if mobile_layout else 0.96,
-        hspace=0.43 if mobile_layout else 0.32,
+        bottom=0.07,
+        top=0.96,
+        hspace=0.32,
         wspace=0.20,
     )
     finish_figure(
@@ -453,7 +439,7 @@ def plot_regime_comparison(
         path,
         plot_config,
         tight_layout=False,
-        tick_label_size=10.4 if not mobile_layout else 10.0,
-        axis_label_size=11.5 if not mobile_layout else 11.0,
-        legend_size=10.5 if not mobile_layout else 10.0,
+        tick_label_size=10.4,
+        axis_label_size=11.5,
+        legend_size=10.5,
     )

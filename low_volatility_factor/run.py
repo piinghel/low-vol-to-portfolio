@@ -430,7 +430,6 @@ def run(
 
     render_article_figures(
         figures,
-        snapshot_sizes=snapshot_sizes,
         decile_metrics=decile_metrics,
         stage_metrics=stage_metrics,
         stage_daily=stage_daily,

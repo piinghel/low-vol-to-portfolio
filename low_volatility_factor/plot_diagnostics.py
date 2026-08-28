@@ -20,7 +20,6 @@ def plot_eligible_universe(
     snapshot_sizes: pl.DataFrame,
     path: Path,
     plot_config: PlotConfig,
-    mobile_layout: bool = False,
 ) -> None:
     """Plot the point-in-time eligible cross-section at each signal date."""
 
@@ -31,7 +30,7 @@ def plot_eligible_universe(
     median = require_finite_float(counts.median(), "median eligible stocks")
     maximum = int(require_finite_float(counts.max(), "maximum eligible stocks"))
 
-    figure, axis = plt.subplots(figsize=(5.2, 4.2) if mobile_layout else (9, 4.2))
+    figure, axis = plt.subplots(figsize=(9, 4.2))
     axis.plot(
         dates,
         counts,
@@ -56,7 +55,6 @@ def plot_decile_profile(
     metrics: pl.DataFrame,
     path: Path,
     plot_config: PlotConfig,
-    mobile_layout: bool = False,
 ) -> None:
     """Plot return, risk, and Sharpe across volatility deciles."""
 
@@ -67,7 +65,7 @@ def plot_decile_profile(
     figure, axes = plt.subplots(
         3,
         1,
-        figsize=(5.2, 9.0) if mobile_layout else (9, 8.0),
+        figsize=(9, 8.0),
     )
     specs = [
         ("sharpe_ratio", "Sharpe ratio", 1.0),
@@ -106,7 +104,6 @@ def plot_naive_leg_risk(
     path: Path,
     scenario_config: ScenarioConfig,
     plot_config: PlotConfig,
-    mobile_layout: bool = False,
 ) -> None:
     """Compare the risk of equal-dollar low- and high-volatility legs."""
 
@@ -143,10 +140,7 @@ def plot_naive_leg_risk(
         )
         for scenario in scenarios
     ]
-    if mobile_layout:
-        figure, axes = plt.subplots(2, 1, figsize=(5.2, 5.0))
-    else:
-        figure, axes = plt.subplots(1, 2, figsize=(9.0, 2.8))
+    figure, axes = plt.subplots(1, 2, figsize=(9.0, 2.8))
     panel_specs = [
         (volatility_values, "Annualized volatility", "%.1f%%"),
         (beta_values, "Average ex-ante beta", "%.2f"),
@@ -177,7 +171,7 @@ def plot_naive_leg_risk(
         clean_axis(axis, plot_config)
         axis.grid(axis="y", visible=False)
         axis.grid(axis="x", color=plot_config.grid_color, linewidth=0.8)
-        if index == 1 and not mobile_layout:
+        if index == 1:
             axis.tick_params(axis="y", left=False, labelleft=False)
     finish_figure(figure, path, plot_config)
 
@@ -187,7 +181,6 @@ def plot_realized_exposures(
     path: Path,
     scenario_config: ScenarioConfig,
     plot_config: PlotConfig,
-    mobile_layout: bool = False,
 ) -> None:
     """Plot realized floating long, short, and net stock exposure."""
 
@@ -198,7 +191,7 @@ def plot_realized_exposures(
     figure, axes = plt.subplots(
         3,
         1,
-        figsize=(5.2, 7.4) if mobile_layout else (9, 5.6),
+        figsize=(9, 5.6),
         sharex=True,
     )
     panels = [
@@ -222,7 +215,6 @@ def plot_beta_diagnostic(
     scenario_config: ScenarioConfig,
     beta_config: BetaConfig,
     plot_config: PlotConfig,
-    mobile_layout: bool = False,
 ) -> None:
     """Plot ex-ante stock beta beside rolling realized market beta."""
 
@@ -250,7 +242,7 @@ def plot_beta_diagnostic(
         )
     )
     dates = data.get_column("date").to_list()
-    figure, axis = plt.subplots(figsize=(5.2, 5.2) if mobile_layout else (9, 4.5))
+    figure, axis = plt.subplots(figsize=(9, 4.5))
     axis.plot(
         dates,
         data.get_column("stock_beta"),
@@ -267,6 +259,6 @@ def plot_beta_diagnostic(
         linewidth=1.6,
     )
     axis.set_ylabel("Beta")
-    axis.legend(frameon=False, ncol=1 if mobile_layout else 2)
+    axis.legend(frameon=False, ncol=2)
     clean_axis(axis, plot_config)
     finish_figure(figure, path, plot_config)
