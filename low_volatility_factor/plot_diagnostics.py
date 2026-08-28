@@ -12,43 +12,7 @@ import polars as pl
 from matplotlib.ticker import FuncFormatter
 
 from .config import BetaConfig, PlotConfig, ScenarioConfig
-from .frame_validation import require_finite_float
 from .plot_style import clean_axis, finish_figure
-
-
-def plot_eligible_universe(
-    snapshot_sizes: pl.DataFrame,
-    path: Path,
-    plot_config: PlotConfig,
-) -> None:
-    """Plot the point-in-time eligible cross-section at each signal date."""
-
-    data = snapshot_sizes.sort("date")
-    dates = data.get_column("date").to_list()
-    counts = data.get_column("eligible_stocks")
-    minimum = int(require_finite_float(counts.min(), "minimum eligible stocks"))
-    median = require_finite_float(counts.median(), "median eligible stocks")
-    maximum = int(require_finite_float(counts.max(), "maximum eligible stocks"))
-
-    figure, axis = plt.subplots(figsize=(9, 4.2))
-    axis.plot(
-        dates,
-        counts,
-        color=plot_config.low_volatility_color,
-        linewidth=1.35,
-    )
-    axis.axhline(
-        median,
-        color=plot_config.zero_line_color,
-        linewidth=1.1,
-        linestyle="--",
-        label=f"Median ({int(median + 0.5):,})",
-    )
-    axis.set_xlim(dates[0], dates[-1])
-    axis.set_ylim(minimum, maximum)
-    axis.legend(frameon=False)
-    clean_axis(axis, plot_config)
-    finish_figure(figure, path, plot_config)
 
 
 def plot_decile_profile(

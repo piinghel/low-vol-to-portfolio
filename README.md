@@ -1,7 +1,7 @@
 # Low-volatility factor research
 
-Research code and figures for [The Low-Volatility Factor: From Stock Sorts to
-Portfolio Risk](https://piinghel.github.io/quant/2024/12/15/low-volatility-factor.html).
+Research code and figures for [The Low-Volatility Factor: Why Position Sizing
+Matters](https://piinghel.github.io/quant/2024/12/15/low-volatility-factor.html).
 
 ## Run
 
