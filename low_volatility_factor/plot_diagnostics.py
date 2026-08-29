@@ -222,15 +222,16 @@ def plot_beta_diagnostic(
         data.get_column("stock_beta"),
         label="Ex-ante stock beta",
         color=plot_config.ex_ante_beta_color,
-        linewidth=1.1,
-        alpha=0.85,
+        linewidth=1.15,
+        linestyle=(0, (3, 2)),
+        alpha=0.75,
     )
     axis.plot(
         dates,
         data.get_column("rolling_realized_beta"),
         label=f"Realized beta ({beta_config.lookback} days)",
         color=plot_config.realized_beta_color,
-        linewidth=1.6,
+        linewidth=1.7,
     )
     axis.set_title(
         "Portfolio beta",
