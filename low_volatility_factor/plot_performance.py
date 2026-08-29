@@ -20,6 +20,14 @@ from .metrics import cumulative_returns, drawdown_series
 from .plot_style import clean_axis, finish_figure
 
 
+def _panel_title_color(plot_config: PlotConfig) -> str:
+    """Return the shared high-contrast color for performance panel titles."""
+
+    if plot_config.background_color.lower() == "#ffffff":
+        return "#000000"
+    return plot_config.text_color
+
+
 def _comparison_style(
     scenario_config: ScenarioConfig,
     plot_config: PlotConfig,
@@ -105,7 +113,13 @@ def plot_performance_and_drawdowns(
     wealth_axis.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}×"))
     wealth_axis.yaxis.set_minor_formatter(NullFormatter())
     wealth_axis.yaxis.set_minor_locator(NullLocator())
-    wealth_axis.set_ylabel("Cumulative return")
+    panel_title_color = _panel_title_color(plot_config)
+    wealth_axis.set_title(
+        "Growth of $1 (log scale)",
+        loc="left",
+        pad=9,
+        color=panel_title_color,
+    )
     last_date = max(date_value for date_value, _ in wealth_endpoints.values())
     label_date = last_date + timedelta(days=80)
     wealth_axis.set_xlim(
@@ -127,7 +141,12 @@ def plot_performance_and_drawdowns(
             fontsize=10.5,
             fontweight="normal",
         )
-    drawdown_axis.set_ylabel("Drawdown (%)")
+    drawdown_axis.set_title(
+        "Drawdown (%)",
+        loc="left",
+        pad=9,
+        color=panel_title_color,
+    )
     for axis in axes:
         clean_axis(axis, plot_config)
     wealth_axis.grid(False, axis="y")
@@ -294,9 +313,10 @@ def plot_regime_comparison(
         (axes[0, 0], axes[1, 0]),
         (axes[0, 1], axes[1, 1]),
     )
+    panel_title_color = _panel_title_color(plot_config)
 
-    for episode_index, ((episode, series), (wealth_axis, legs_axis)) in enumerate(
-        zip(episode_series, episode_axes, strict=True)
+    for (episode, series), (wealth_axis, legs_axis) in zip(
+        episode_series, episode_axes, strict=True
     ):
         start, end, turn, title, tick_months = episode
         strategy, market, long_leg, short_leg = series
@@ -374,16 +394,16 @@ def plot_regime_comparison(
                 va="center",
                 color=color,
                 fontsize=label_size,
-                fontweight=600,
+                fontweight="bold",
             )
 
         wealth_axis.set_title(
-            title,
+            f"{title}\nWealth (start = 1)",
             loc="left",
             pad=10,
-            color=plot_config.text_color,
+            color=panel_title_color,
             fontsize=12.0,
-            fontweight=600,
+            fontweight="bold",
         )
         for axis in (wealth_axis, legs_axis):
             tick_locator = mdates.MonthLocator(interval=tick_months)
@@ -415,9 +435,14 @@ def plot_regime_comparison(
         legs_axis.yaxis.set_major_formatter(
             FuncFormatter(lambda value, _: f"{value:+.0f} pp")
         )
-        if episode_index == 0:
-            wealth_axis.set_ylabel("Wealth")
-            legs_axis.set_ylabel("Contribution")
+        legs_axis.set_title(
+            "Long/short contribution (pp)",
+            loc="left",
+            pad=8,
+            color=panel_title_color,
+            fontsize=10.5,
+            fontweight="normal",
+        )
         if turn is not None:
             for axis in (wealth_axis, legs_axis):
                 axis.axvline(

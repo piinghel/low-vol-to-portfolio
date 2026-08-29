@@ -49,7 +49,12 @@ def plot_decile_profile(
                 for decile in x
             ],
         )
-        axis.set_title(title, loc="left", pad=9)
+        axis.set_title(
+            title,
+            loc="left",
+            pad=9,
+            color=plot_config.muted_text_color,
+        )
         tick_labels = [
             "1\nLow-vol"
             if decile == min(x)
@@ -168,7 +173,12 @@ def plot_realized_exposures(
         axis.set_ylim(0, 1.12)
         axis.set_yticks([0, 0.5, 1.0])
         axis.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.0%}"))
-        axis.set_title(label, loc="left", pad=9)
+        axis.set_title(
+            label,
+            loc="left",
+            pad=9,
+            color=plot_config.muted_text_color,
+        )
         clean_axis(axis, plot_config)
     finish_figure(figure, path, plot_config)
 
@@ -222,7 +232,12 @@ def plot_beta_diagnostic(
         color=plot_config.realized_beta_color,
         linewidth=1.6,
     )
-    axis.set_ylabel("Beta")
+    axis.set_title(
+        "Portfolio beta",
+        loc="left",
+        pad=9,
+        color=plot_config.muted_text_color,
+    )
     axis.legend(frameon=False, ncol=2)
     clean_axis(axis, plot_config)
     finish_figure(figure, path, plot_config)
