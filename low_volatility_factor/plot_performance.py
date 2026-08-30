@@ -119,6 +119,7 @@ def plot_performance_and_drawdowns(
         loc="left",
         pad=9,
         color=panel_title_color,
+        fontweight="bold",
     )
     last_date = max(date_value for date_value, _ in wealth_endpoints.values())
     label_date = last_date + timedelta(days=80)
@@ -146,6 +147,7 @@ def plot_performance_and_drawdowns(
         loc="left",
         pad=9,
         color=panel_title_color,
+        fontweight="bold",
     )
     for axis in axes:
         clean_axis(axis, plot_config)
@@ -398,7 +400,7 @@ def plot_regime_comparison(
             )
 
         wealth_axis.set_title(
-            f"{title}\nWealth (start = 1)",
+            f"{title}\nGrowth of $1",
             loc="left",
             pad=10,
             color=panel_title_color,

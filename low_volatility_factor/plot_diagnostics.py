@@ -54,6 +54,7 @@ def plot_decile_profile(
             loc="left",
             pad=9,
             color=plot_config.muted_text_color,
+            fontweight="normal",
         )
         tick_labels = [
             "1\nLow-vol"
@@ -178,6 +179,7 @@ def plot_realized_exposures(
             loc="left",
             pad=9,
             color=plot_config.muted_text_color,
+            fontweight="normal",
         )
         clean_axis(axis, plot_config)
     finish_figure(figure, path, plot_config)
@@ -238,6 +240,7 @@ def plot_beta_diagnostic(
         loc="left",
         pad=9,
         color=plot_config.muted_text_color,
+        fontweight="normal",
     )
     axis.legend(frameon=False, ncol=2)
     clean_axis(axis, plot_config)

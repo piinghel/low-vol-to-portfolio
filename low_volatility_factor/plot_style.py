@@ -62,7 +62,6 @@ def finish_figure(
         axis.yaxis.label.set_color(plot_config.muted_text_color)
         axis.yaxis.label.set_fontsize(axis_label_size)
         axis.title.set_color(plot_config.text_color)
-        axis.title.set_fontweight("normal")
         axis.title.set_fontsize(title_size)
         legend = axis.get_legend()
         if legend is not None:
@@ -78,6 +77,12 @@ def finish_figure(
         pad_inches=0.03,
         facecolor=plot_config.background_color,
     )
+    if path.suffix.lower() == ".svg":
+        svg = path.read_text(encoding="utf-8")
+        path.write_text(
+            "\n".join(line.rstrip() for line in svg.splitlines()) + "\n",
+            encoding="utf-8",
+        )
     plt.close(figure)
 
 
