@@ -24,6 +24,15 @@ checks, metrics, light/dark SVGs, and compact daily P&L for portfolio, books,
 and deciles. Those daily Parquet files support reconciliation without repeating
 the full feature pipeline. Generated runs remain ignored by Git.
 
+The corrected September 2026 run is retained locally in
+`output/turnover-review-2026-09-05/`, including its input hashes and effective
+configuration. It values exited holdings at their liquidation prices and counts
+each scenario's trades once. Reproduce it with:
+
+```bash
+uv run low-vol-factor --data-root /path/to/export --output output/turnover-review-2026-09-05
+```
+
 The September 2026 reproduction covers 12 July 1995–27 May 2026. Signals and
 P&L use adjusted-price changes; the point-in-time beta diagnostic uses vendor
 total returns compounded onto the index calendar. The default beta eligibility
