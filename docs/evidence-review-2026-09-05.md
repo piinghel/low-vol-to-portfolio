@@ -3,7 +3,7 @@
 The published sizing comparison uses the local run
 `output/turnover-review-2026-09-05/`, generated after turnover correction
 `0f8acbe`. The run's configuration and input hashes remain local with its
-generated outputs. No licensed source observations are included here.
+generated outputs. This note records aggregate results and implementation checks.
 
 ## Corrected results
 

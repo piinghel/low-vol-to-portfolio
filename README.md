@@ -3,12 +3,41 @@
 Research code and figures for [Sizing a Low-Volatility
 Portfolio](https://piinghel.github.io/quant/2024/12/15/low-volatility-factor.html).
 
-## Run
+## Start with the sizing rule
 
-The backtest uses the author's shared research packages, referenced through
-`../../packages/` in `pyproject.toml`. Those packages and a licensed input export
-are required for a complete run; the public repository contains the article's
-research code and configuration.
+From the repository root, with Python 3.12 or later and
+[uv](https://docs.astral.sh/uv/):
+
+```bash
+uv run --isolated --no-project --with polars==1.44.1 python -m low_volatility_factor.sizing_example
+```
+
+This uses the actual target-construction code on invented stock snapshots.
+Equal weights give each book 1.0 notional. Volatility scaling leaves the
+low-volatility long book at 1.0 and reduces the high-volatility short book to
+0.4. It does not calculate returns or estimate realized portfolio volatility.
+The command needs no input files and does not install the full backtest stack.
+
+The method is split into a few direct steps:
+
+| Step | Source |
+| --- | --- |
+| Trailing volatility, ranking and beta | [features.py](low_volatility_factor/features.py) |
+| Stock selection and target sizing | [portfolio_targets.py](low_volatility_factor/portfolio_targets.py) |
+| Timing and execution-engine calls | [backtest.py](low_volatility_factor/backtest.py) |
+| Experiment settings and orchestration | [config.py](low_volatility_factor/config.py), [run.py](low_volatility_factor/run.py) |
+
+Run the signal and sizing tests without the backtest dependencies:
+
+```bash
+uv run --isolated --no-project --with polars==1.44.1 --with pytest python -m pytest tests/test_features.py tests/test_targets.py -q
+```
+
+## Full backtest
+
+The full runner additionally requires the shared packages referenced in
+`pyproject.toml` and price, point-in-time constituent, and index inputs. These
+are not bundled in this checkout; the synthetic example above runs independently.
 
 ```bash
 uv sync --dev
@@ -16,8 +45,8 @@ uv run low-vol-factor
 ```
 
 Use `--data-root /path/to/export --output /path/to/run` to select inputs and a
-separate run directory. The input export must contain the licensed vendor
-price, constituent, and index files; it is not bundled in this repository.
+separate run directory. Column names and file patterns are specified in
+`DataConfig` in [config.py](low_volatility_factor/config.py).
 
 Each run saves the effective configuration, input hashes, sample and quality
 checks, metrics, light/dark SVGs, and compact daily P&L for portfolio, books,

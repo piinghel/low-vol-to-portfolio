@@ -2,50 +2,15 @@
 
 from datetime import date
 from pathlib import Path
-from typing import cast
 
 import polars as pl
 import pytest
 
 from low_volatility_factor.backtest import prepare_held_returns, simulate_stock_targets
 from low_volatility_factor.config import (
-    BucketConfig,
     CostConfig,
     DataConfig,
-    ScenarioConfig,
-    SignalConfig,
-    SizingConfig,
 )
-from low_volatility_factor.portfolio_targets import (
-    build_stage_targets,
-    summarize_target_exposures,
-)
-
-
-def test_scaling_respects_cap_and_keeps_short_leg_underinvested() -> None:
-    snapshots = pl.DataFrame(
-        {
-            "date": [date(2024, 1, 2)] * 200,
-            "asset_id_bb_global": [f"stock_{index}" for index in range(200)],
-            "volatility_decile": [1] * 100 + [10] * 100,
-            "sizing_volatility": [0.10] * 100 + [0.50] * 100,
-            "stock_beta": [0.50] * 100 + [1.50] * 100,
-        }
-    )
-    targets = build_stage_targets(
-        snapshots,
-        DataConfig(data_root=Path(".")),
-        SignalConfig(),
-        BucketConfig(),
-        SizingConfig(),
-        ScenarioConfig(),
-    )
-    scaled = targets.filter(pl.col("scenario") == "vol_scaled_ls")
-    exposures = summarize_target_exposures(scaled).row(0, named=True)
-
-    assert cast(float, scaled["weight"].abs().max()) <= 0.04
-    assert exposures["long_exposure"] == 1.0
-    assert exposures["short_exposure"] == 0.4
 
 
 def _fixture() -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, pl.DataFrame]:

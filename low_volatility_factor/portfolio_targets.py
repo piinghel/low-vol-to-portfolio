@@ -30,9 +30,12 @@ def _equal_weight_scenario(
         else pl.lit(1.0)
     )
     return (
-        candidates.with_columns(pl.len().over(group_columns).alias("leg_size"))
-        .with_columns((sign / pl.col("leg_size")).alias("weight"))
-        .with_columns(pl.lit(scenario).alias("scenario"))
+        candidates.lazy()
+        .with_columns(
+            (sign / pl.len().over(group_columns)).alias("weight"),
+            pl.lit(scenario).alias("scenario"),
+        )
+        .collect()
     )
 
 
@@ -212,8 +215,10 @@ def build_decile_targets(
 
 
 def summarize_target_exposures(targets: pl.DataFrame) -> pl.DataFrame:
+    """Summarize signed target weights, not subsequent floating exposures."""
     return (
-        targets.group_by("signal_date", "scenario")
+        targets.lazy()
+        .group_by("signal_date", "scenario")
         .agg(
             pl.col("weight").abs().sum().alias("gross_exposure"),
             pl.col("weight").sum().alias("net_exposure"),
@@ -225,4 +230,5 @@ def summarize_target_exposures(targets: pl.DataFrame) -> pl.DataFrame:
             pl.len().alias("positions"),
         )
         .sort("signal_date", "scenario")
+        .collect()
     )
