@@ -9,7 +9,7 @@ From the repository root, with Python 3.12 or later and
 [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv run --isolated --no-project --with polars==1.44.1 python -m low_volatility_factor.sizing_example
+uv run --isolated --no-project --python 3.12 --with polars==1.44.1 python -m low_volatility_factor.sizing_example
 ```
 
 This uses the actual target-construction code on invented stock snapshots.
@@ -30,7 +30,7 @@ The method is split into a few direct steps:
 Run the signal and sizing tests without the backtest dependencies:
 
 ```bash
-uv run --isolated --no-project --with polars==1.44.1 --with pytest python -m pytest tests/test_features.py tests/test_targets.py -q
+uv run --isolated --no-project --python 3.12 --with polars==1.44.1 --with pytest python -m pytest tests/test_features.py tests/test_targets.py -q
 ```
 
 ## Full backtest
