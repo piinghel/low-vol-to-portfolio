@@ -1,9 +1,14 @@
 # Low-volatility factor research
 
-Research code and figures for [Inverse-Volatility Sizing Stops the Short Book
-Taking Over](https://piinghel.github.io/quant/2024/12/15/low-volatility-factor.html).
+Research code and figures for [Sizing a Low-Volatility
+Portfolio](https://piinghel.github.io/quant/2024/12/15/low-volatility-factor.html).
 
 ## Run
+
+The backtest uses the author's shared research packages, referenced through
+`../../packages/` in `pyproject.toml`. Those packages and a licensed input export
+are required for a complete run; the public repository contains the article's
+research code and configuration.
 
 ```bash
 uv sync --dev

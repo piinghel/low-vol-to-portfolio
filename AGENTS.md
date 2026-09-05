@@ -21,8 +21,9 @@ portfolio-construction article.
   and consistent colors across related plots.
 - Let date-formatted ticks communicate time; omit generic `Date` x-axis labels.
 - Figure 3 must show realized floating exposure. Figure 6 is one 2-by-2 regime
-  figure with dot-com on the left, the AI rally on the right, and a single
-  caption; do not restore a separate Figure 8.
+  figure with dot-com on the left, April 2025–May 2026 on the right, and a single
+  caption. Do not attribute the later rally to AI without holdings-level
+  evidence; do not restore a separate Figure 8.
 - Publish one shared figure layout in light and dark SVG variants.
 - Prefer small, explicit changes over speculative abstractions.
 
