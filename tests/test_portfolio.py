@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import cast
 
 import polars as pl
+import pytest
 
 from low_volatility_factor.backtest import prepare_held_returns, simulate_stock_targets
 from low_volatility_factor.config import (
@@ -99,6 +100,63 @@ def test_package_pnl_uses_fixed_notional_and_floating_weights() -> None:
     assert result["equity_turnover"] == 2.0
     assert result["long_exposure"] == 1.10
     assert result["short_exposure"] == 0.90
+
+
+@pytest.mark.parametrize("scenario_names", [["one"], ["one", "two"]])
+@pytest.mark.parametrize("next_asset, expected_turnover", [("A", 0.1), ("B", 2.1)])
+def test_rebalance_costs_use_drifted_holdings_for_each_scenario(
+    scenario_names: list[str], next_asset: str, expected_turnover: float
+) -> None:
+    dates = [date(2024, 1, day) for day in (2, 3, 4)]
+    targets = pl.DataFrame(
+        [
+            {
+                "signal_date": signal_date,
+                "asset_id_bb_global": asset,
+                "scenario": scenario,
+                "weight": 1.0,
+                "stock_beta": 1.0,
+            }
+            for scenario in scenario_names
+            for signal_date, asset in zip(dates[:2], ["A", next_asset], strict=True)
+        ]
+    )
+    prices = pl.DataFrame(
+        {
+            "date": [day for day in dates for _ in range(2)],
+            "asset_id_bb_global": ["A", "B"] * 3,
+            "px_last": [100.0, 100.0, 110.0, 100.0, 121.0, 110.0],
+        }
+    )
+    date_to_signal = pl.DataFrame(
+        {"date": dates[1:], "signal_date": dates[:2], "market_return": [0.0, 0.0]}
+    )
+    schedule = pl.DataFrame(
+        {
+            "signal_date": dates[:2],
+            "execution_date": dates[:2],
+            "effective_return_date": dates[1:],
+        }
+    )
+    result = simulate_stock_targets(
+        targets,
+        prices,
+        date_to_signal,
+        schedule,
+        DataConfig(data_root=Path(".")),
+        CostConfig(equity_cost_bps=5.0),
+    )
+    for scenario in scenario_names:
+        daily = (
+            result.lazy().filter(pl.col("scenario") == scenario).sort("date").collect()
+        )
+        assert daily["gross_return"].to_list() == pytest.approx([0.1, 0.1])
+        assert daily["equity_turnover"].to_list() == pytest.approx(
+            [1.0, expected_turnover]
+        )
+        assert daily["equity_cost"].to_list() == pytest.approx(
+            [0.0005, expected_turnover * 0.0005]
+        )
 
 
 def test_held_return_quality_marks_internal_missing_dates() -> None:

@@ -175,7 +175,7 @@ def _build_package_book(
             on=["execution_date", asset_col],
             how="left",
         )
-        .rename({"px_last": "execution_price"})
+        .rename({data_config.adjusted_price_column: "execution_price"})
         .with_columns(
             (pl.col("weight") / pl.col("execution_price")).alias("final_target_qty")
         )
@@ -197,7 +197,7 @@ def _build_package_book(
     )
 
     signal_sequence = (
-        schedule.select("signal_date", "effective_return_date")
+        schedule.select("signal_date", "execution_date", "effective_return_date")
         .unique()
         .sort("signal_date")
         .with_columns(pl.col("signal_date").shift(1).alias("previous_signal_date"))
@@ -207,12 +207,12 @@ def _build_package_book(
         "effective_return_date",
         "scenario",
         asset_col,
-        "execution_price",
         pl.col("weight").alias("new_value"),
     )
     previous = (
-        signal_sequence.join(
-            target_effective.select(
+        signal_sequence.lazy()
+        .join(
+            target_effective.lazy().select(
                 "signal_date", "scenario", asset_col, "final_target_qty"
             ),
             left_on="previous_signal_date",
@@ -220,9 +220,17 @@ def _build_package_book(
             how="inner",
         )
         .join(
-            current.select("signal_date", asset_col, "execution_price"),
-            on=["signal_date", asset_col],
+            # An exited asset still needs a liquidation price. Prices are
+            # independent of scenario, so join the calendar panel directly.
+            prices.lazy().rename(
+                {
+                    date_col: "execution_date",
+                    data_config.adjusted_price_column: "execution_price",
+                }
+            ),
+            on=["execution_date", asset_col],
             how="left",
+            validate="m:1",
         )
         .select(
             "signal_date",
@@ -231,6 +239,7 @@ def _build_package_book(
             asset_col,
             (pl.col("final_target_qty") * pl.col("execution_price")).alias("old_value"),
         )
+        .collect()
     )
     executions = (
         current.join(
@@ -371,7 +380,6 @@ def simulate_stock_targets(
             .alias("scenario"),
         )
         .pivot(index=[date_col, "scenario"], on="fee_state", values="value")
-        .rename({"gross_pnl": "gross_pnl", "net_pnl": "net_pnl"})
         .join(exposures, on=[date_col, "scenario"], how="left")
         .join(turnover, on=[date_col, "scenario"], how="left")
         .join(
