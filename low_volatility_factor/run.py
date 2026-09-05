@@ -428,6 +428,12 @@ def run(
     stage_metrics.write_csv(output / "stage_metrics.csv")
     decile_metrics.write_csv(output / "decile_metrics.csv")
 
+    # Retain compact daily evidence so metrics and book contributions can be
+    # checked without repeating the full price and signal pipeline.
+    stage_daily.write_parquet(output / "stage_daily.parquet")
+    scaled_leg_daily.write_parquet(output / "scaled_leg_daily.parquet")
+    decile_daily.write_parquet(output / "decile_daily.parquet")
+
     render_article_figures(
         figures,
         decile_metrics=decile_metrics,

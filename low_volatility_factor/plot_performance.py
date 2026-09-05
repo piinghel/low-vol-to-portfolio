@@ -287,7 +287,7 @@ def plot_regime_comparison(
             date(2025, 4, 3),
             date(2026, 5, 27),
             None,
-            "B  AI rally",
+            "B  April 2025–May 2026 rally",
             3,
         ),
     )
