@@ -398,7 +398,7 @@ def plot_regime_comparison(
             linewidth=1.5,
         )
 
-        label_size = 9.4
+        label_size = 12.0 if mobile else 14.0
         label_date = end + (end - start) * 0.025
         for axis, values, label, color, offset in (
             (
@@ -418,14 +418,14 @@ def plot_regime_comparison(
             (
                 legs_axis,
                 long_contribution,
-                "Long low-vol",
+                "Long\nlow-vol",
                 plot_config.low_volatility_color,
                 4,
             ),
             (
                 legs_axis,
                 short_contribution,
-                "Short high-vol",
+                "Short\nhigh-vol",
                 plot_config.high_volatility_color,
                 -4,
             ),
@@ -447,7 +447,7 @@ def plot_regime_comparison(
             loc="left",
             pad=10,
             color=panel_title_color,
-            fontsize=12.0,
+            fontsize=13.0 if mobile else 16.0,
             fontweight="bold",
         )
         for axis in (wealth_axis, legs_axis):
@@ -483,7 +483,7 @@ def plot_regime_comparison(
             loc="left",
             pad=8,
             color=panel_title_color,
-            fontsize=10.5,
+            fontsize=12.0 if mobile else 14.0,
             fontweight="normal",
         )
         if turn is not None:
@@ -493,7 +493,7 @@ def plot_regime_comparison(
                 xycoords=("data", "axes fraction"),
                 xytext=(5, 0),
                 textcoords="offset points",
-                fontsize=9,
+                fontsize=11.0 if mobile else 13.0,
                 color=plot_config.muted_text_color,
                 va="bottom",
             )
@@ -502,7 +502,7 @@ def plot_regime_comparison(
                     turn,
                     color=plot_config.zero_line_color,
                     linewidth=0.9,
-                    linestyle=(0, (2, 3)),
+                    alpha=0.55,
                 )
     figure.subplots_adjust(
         left=0.16 if mobile else 0.10,
@@ -510,14 +510,15 @@ def plot_regime_comparison(
         bottom=0.07,
         top=0.96,
         hspace=0.65 if mobile else 0.32,
-        wspace=0.20,
+        wspace=0.38,
     )
     finish_figure(
         figure,
         path,
         plot_config,
         tight_layout=False,
-        tick_label_size=10.4,
+        tick_label_size=12.0 if mobile else 14.0,
+        title_size=13.0 if mobile else 16.0,
         axis_label_size=11.5,
         legend_size=10.5,
     )
