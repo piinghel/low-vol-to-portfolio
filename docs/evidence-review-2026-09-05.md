@@ -46,7 +46,9 @@ POLARS_MAX_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m low_volatility_f
 
 The three article figures now include light/dark phone layouts. Performance
 drawdowns use only a light reference fill; episode panels use common limits
-across episodes, visible zero references and a labeled portfolio trough.
+across episodes and visible zero references. The September 2026 editorial
+refresh removes the portfolio-trough label and marker; episode dates and
+contribution calculations stay the same.
 These new SVGs are deliberately not byte-identical to the previous exports;
 return and contribution calculations are unchanged. The values above remain
 the evidence baseline, including the terminal-event limitation below.

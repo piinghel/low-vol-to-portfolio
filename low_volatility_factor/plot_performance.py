@@ -291,25 +291,23 @@ def plot_regime_comparison(
 ) -> None:
     """Contrast a completed rally/reversal with the still-open recent rally."""
 
-    episodes: tuple[tuple[date, date, date | None, str, int], ...] = (
+    episodes: tuple[tuple[date, date, str, int], ...] = (
         (
             date(1998, 10, 8),
             date(2001, 4, 3),
-            date(2000, 3, 9),
             "A  Dot-com: rally, then reversal",
             6,
         ),
         (
             date(2025, 4, 3),
             date(2026, 5, 27),
-            None,
             "B  April 2025–May 2026 rally",
             3,
         ),
     )
     episode_series = [
         (
-            (start, end, turn, title, tick_months),
+            (start, end, title, tick_months),
             _episode_series(
                 daily,
                 scaled_leg_daily,
@@ -318,7 +316,7 @@ def plot_regime_comparison(
                 end=end,
             ),
         )
-        for start, end, turn, title, tick_months in episodes
+        for start, end, title, tick_months in episodes
     ]
 
     figure, axes = plt.subplots(
@@ -363,7 +361,7 @@ def plot_regime_comparison(
     for (episode, series), (wealth_axis, legs_axis) in zip(
         episode_series, episode_axes, strict=True
     ):
-        start, end, turn, title, tick_months = episode
+        start, end, title, tick_months = episode
         strategy, market, long_leg, short_leg = series
         market_dates = market.get_column("date").to_list()
         market_wealth = market.get_column("wealth").to_list()
@@ -486,24 +484,6 @@ def plot_regime_comparison(
             fontsize=12.0 if mobile else 14.0,
             fontweight="normal",
         )
-        if turn is not None:
-            wealth_axis.annotate(
-                "Portfolio trough",
-                xy=(turn, 0.02),
-                xycoords=("data", "axes fraction"),
-                xytext=(5, 0),
-                textcoords="offset points",
-                fontsize=11.0 if mobile else 13.0,
-                color=plot_config.muted_text_color,
-                va="bottom",
-            )
-            for axis in (wealth_axis, legs_axis):
-                axis.axvline(
-                    turn,
-                    color=plot_config.zero_line_color,
-                    linewidth=0.9,
-                    alpha=0.55,
-                )
     figure.subplots_adjust(
         left=0.16 if mobile else 0.10,
         right=0.98,

@@ -20,10 +20,10 @@ portfolio-construction article.
 - Keep article figures minimal and free of embedded titles. Use subtle grids
   and consistent colors across related plots.
 - Let date-formatted ticks communicate time; omit generic `Date` x-axis labels.
-- Figure 3 must show realized floating exposure. Figure 6 is one 2-by-2 regime
+- The published Figure 3 is one 2-by-2 regime
   figure with dot-com on the left, April 2025–May 2026 on the right, and a single
   caption. Do not attribute the later rally to AI without holdings-level
-  evidence; do not restore a separate Figure 8.
+  evidence. Keep floating-exposure diagnostics in the research outputs.
 - Publish matching light/dark layouts for desktop and phone. On phones, stack
   episode groups with growth above contributions; retain the same scales and
   definitions as desktop.
