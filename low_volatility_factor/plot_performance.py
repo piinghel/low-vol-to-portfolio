@@ -58,6 +58,8 @@ def plot_performance_and_drawdowns(
     path: Path,
     scenario_config: ScenarioConfig,
     plot_config: PlotConfig,
+    *,
+    mobile: bool = False,
 ) -> None:
     """Plot cumulative wealth and drawdowns in one aligned figure."""
 
@@ -68,7 +70,7 @@ def plot_performance_and_drawdowns(
     figure, axes = plt.subplots(
         2,
         1,
-        figsize=(9.0, 7.2),
+        figsize=(4.8, 6.3) if mobile else (9.0, 7.2),
         sharex=True,
         gridspec_kw={"height_ratios": [2.1, 1.0], "hspace": 0.08},
     )
@@ -86,15 +88,19 @@ def plot_performance_and_drawdowns(
         drawdown = drawdowns.filter(pl.col("scenario") == scenario).sort("date")
         dates = drawdown.get_column("date").to_list()
         values = drawdown.get_column("drawdown") * 100
-        drawdown_axis.plot(dates, values, color=colors[scenario])
-        drawdown_axis.fill_between(
-            dates,
-            values,
-            0,
-            color=colors[scenario],
-            alpha=0.07,
-            linewidth=0,
+        drawdown_axis.plot(
+            dates, values, color=colors[scenario], linewidth=1.5, zorder=3
         )
+        if scenario == scenario_config.naive_equal_weight_long_short:
+            drawdown_axis.fill_between(
+                dates,
+                values,
+                0,
+                color=colors[scenario],
+                alpha=0.08,
+                linewidth=0,
+                zorder=1,
+            )
     wealth_axis.set_yscale("log")
     wealth_min = require_finite_float(
         performance.get_column("wealth").min(), "minimum cumulative wealth"
@@ -132,11 +138,13 @@ def plot_performance_and_drawdowns(
     ):
         _, value = wealth_endpoints[scenario]
         wealth_axis.annotate(
-            labels[scenario],
+            labels[scenario].replace("\nlong/short", "")
+            if mobile
+            else labels[scenario],
             xy=(label_date, value),
-            xytext=(0, -10 if index == 0 else 10),
+            xytext=(-12 if mobile else 0, -16 if index == 0 else 16),
             textcoords="offset points",
-            ha="left",
+            ha="right" if mobile else "left",
             va="center",
             color=colors[scenario],
             fontsize=10.5,
@@ -151,6 +159,12 @@ def plot_performance_and_drawdowns(
     )
     for axis in axes:
         clean_axis(axis, plot_config)
+    drawdown_axis.xaxis.set_major_locator(mdates.YearLocator(10 if mobile else 5))
+    drawdown_axis.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    wealth_axis.axhline(1.0, color=plot_config.zero_line_color, linewidth=0.8, zorder=0)
+    drawdown_axis.axhline(
+        0.0, color=plot_config.zero_line_color, linewidth=0.8, zorder=0
+    )
     wealth_axis.grid(False, axis="y")
     for tick in wealth_axis.get_yticks():
         if abs(tick - 1.0) > 1e-9:
@@ -161,7 +175,7 @@ def plot_performance_and_drawdowns(
                 zorder=0,
             )
     figure.subplots_adjust(
-        left=0.09,
+        left=0.14 if mobile else 0.09,
         right=0.99,
         bottom=0.09,
         top=0.98,
@@ -272,6 +286,8 @@ def plot_regime_comparison(
     path: Path,
     scenario_config: ScenarioConfig,
     plot_config: PlotConfig,
+    *,
+    mobile: bool = False,
 ) -> None:
     """Contrast a completed rally/reversal with the still-open recent rally."""
 
@@ -306,14 +322,41 @@ def plot_regime_comparison(
     ]
 
     figure, axes = plt.subplots(
-        2,
-        2,
-        figsize=(12.0, 7.8),
-        gridspec_kw={"height_ratios": [1.12, 1.0]},
+        4 if mobile else 2,
+        1 if mobile else 2,
+        figsize=(4.8, 11.2) if mobile else (12.0, 7.8),
+        gridspec_kw={
+            "height_ratios": [1.12, 1.0, 1.12, 1.0] if mobile else [1.12, 1.0]
+        },
     )
     episode_axes = (
-        (axes[0, 0], axes[1, 0]),
-        (axes[0, 1], axes[1, 1]),
+        ((axes[0], axes[1]), (axes[2], axes[3]))
+        if mobile
+        else (
+            (axes[0, 0], axes[1, 0]),
+            (axes[0, 1], axes[1, 1]),
+        )
+    )
+    # One range per variable preserves magnitude comparisons across episodes.
+    all_wealth = [
+        float(value)
+        for _, series in episode_series
+        for frame in series[:2]
+        for value in frame["wealth"]
+    ] + [1.0]
+    all_contributions = [
+        100 * (float(value) - 1)
+        for _, series in episode_series
+        for frame in series[2:]
+        for value in frame["wealth"]
+    ] + [0.0]
+    wealth_limits = (
+        floor((min(all_wealth) - 0.02) / 0.05) * 0.05,
+        ceil((max(all_wealth) + 0.02) / 0.05) * 0.05,
+    )
+    contribution_limits = (
+        floor((min(all_contributions) - 1) / 5) * 5,
+        ceil((max(all_contributions) + 1) / 5) * 5,
     )
     panel_title_color = _panel_title_color(plot_config)
 
@@ -419,26 +462,24 @@ def plot_regime_comparison(
             axis.set_xlim(start, end + (end - start) * 0.18)
             clean_axis(axis, plot_config)
         wealth_axis.tick_params(axis="x", labelbottom=False)
-        episode_wealth = market_wealth + strategy_wealth + [1.0]
-        wealth_axis.set_ylim(
-            floor((min(episode_wealth) - 0.02) / 0.05) * 0.05,
-            ceil((max(episode_wealth) + 0.02) / 0.05) * 0.05,
+        wealth_axis.set_ylim(*wealth_limits)
+        wealth_axis.axhline(
+            1.0, color=plot_config.zero_line_color, linewidth=0.8, zorder=0
         )
         wealth_axis.yaxis.set_major_locator(MaxNLocator(nbins=4))
         wealth_axis.yaxis.set_major_formatter(
             FuncFormatter(lambda value, _: f"{value:.2f}".rstrip("0").rstrip(".") + "×")
         )
-        episode_contributions = long_contribution + short_contribution + [0.0]
-        legs_axis.set_ylim(
-            floor((min(episode_contributions) - 1.0) / 5.0) * 5.0,
-            ceil((max(episode_contributions) + 1.0) / 5.0) * 5.0,
+        legs_axis.set_ylim(*contribution_limits)
+        legs_axis.axhline(
+            0.0, color=plot_config.zero_line_color, linewidth=0.8, zorder=0
         )
         legs_axis.yaxis.set_major_locator(MaxNLocator(nbins=4))
         legs_axis.yaxis.set_major_formatter(
             FuncFormatter(lambda value, _: f"{value:+.0f} pp")
         )
         legs_axis.set_title(
-            "Long/short contribution (pp)",
+            "Cumulative contributions (pp)",
             loc="left",
             pad=8,
             color=panel_title_color,
@@ -446,6 +487,16 @@ def plot_regime_comparison(
             fontweight="normal",
         )
         if turn is not None:
+            wealth_axis.annotate(
+                "Portfolio trough",
+                xy=(turn, 0.02),
+                xycoords=("data", "axes fraction"),
+                xytext=(5, 0),
+                textcoords="offset points",
+                fontsize=9,
+                color=plot_config.muted_text_color,
+                va="bottom",
+            )
             for axis in (wealth_axis, legs_axis):
                 axis.axvline(
                     turn,
@@ -454,11 +505,11 @@ def plot_regime_comparison(
                     linestyle=(0, (2, 3)),
                 )
     figure.subplots_adjust(
-        left=0.10,
+        left=0.16 if mobile else 0.10,
         right=0.98,
         bottom=0.07,
         top=0.96,
-        hspace=0.32,
+        hspace=0.65 if mobile else 0.32,
         wspace=0.20,
     )
     finish_figure(

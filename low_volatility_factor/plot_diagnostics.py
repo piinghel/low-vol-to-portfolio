@@ -74,6 +74,8 @@ def plot_naive_leg_risk(
     path: Path,
     scenario_config: ScenarioConfig,
     plot_config: PlotConfig,
+    *,
+    mobile: bool = False,
 ) -> None:
     """Compare the risk of equal-dollar low- and high-volatility legs."""
 
@@ -110,7 +112,11 @@ def plot_naive_leg_risk(
         )
         for scenario in scenarios
     ]
-    figure, axes = plt.subplots(1, 2, figsize=(9.0, 2.8))
+    figure, axes = plt.subplots(
+        2 if mobile else 1,
+        1 if mobile else 2,
+        figsize=(4.8, 4.8) if mobile else (9.0, 2.8),
+    )
     panel_specs = [
         (volatility_values, "Annualized volatility", "%.1f%%"),
         (beta_values, "Average ex-ante beta", "%.2f"),
@@ -141,7 +147,7 @@ def plot_naive_leg_risk(
         clean_axis(axis, plot_config)
         axis.grid(axis="y", visible=False)
         axis.grid(axis="x", color=plot_config.grid_color, linewidth=0.8)
-        if index == 1:
+        if index == 1 and not mobile:
             axis.tick_params(axis="y", left=False, labelleft=False)
     finish_figure(figure, path, plot_config)
 

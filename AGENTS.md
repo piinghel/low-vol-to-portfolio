@@ -24,7 +24,9 @@ portfolio-construction article.
   figure with dot-com on the left, April 2025–May 2026 on the right, and a single
   caption. Do not attribute the later rally to AI without holdings-level
   evidence; do not restore a separate Figure 8.
-- Publish one shared figure layout in light and dark SVG variants.
+- Publish matching light/dark layouts for desktop and phone. On phones, stack
+  episode groups with growth above contributions; retain the same scales and
+  definitions as desktop.
 - Prefer small, explicit changes over speculative abstractions.
 
 ## Checks

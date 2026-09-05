@@ -30,10 +30,26 @@ and linked before-cost contributions are −10.4103 and −27.1433 percentage
 points from longs and shorts. From the close of 3 April 2025 to 27 May 2026,
 the corresponding values are −12.6682%, +38.5484%, +4.1858 and −16.2782 points.
 
-The published light and dark performance/drawdown SVGs are byte-identical to
-this run. The other two published figure pairs have identical visible path
+Before the presentation refresh below, the published light and dark
+performance/drawdown SVGs were byte-identical to this run. The other two published figure pairs had identical visible path
 geometry and text to the regenerated figures; timestamps, generated SVG
 identifiers and font serialization differ.
+
+## Presentation-only refresh
+
+The subsequent desktop/mobile refresh reads the same saved run; it does not
+rerun features or portfolios. Regenerate with:
+
+```sh
+POLARS_MAX_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m low_volatility_factor.article_figures --input output/turnover-review-2026-09-05 --output output/display-review-2026-09-05
+```
+
+The three article figures now include light/dark phone layouts. Performance
+drawdowns use only a light reference fill; episode panels use common limits
+across episodes, visible zero references and a labeled portfolio trough.
+These new SVGs are deliberately not byte-identical to the previous exports;
+return and contribution calculations are unchanged. The values above remain
+the evidence baseline, including the terminal-event limitation below.
 
 ## Terminal events remain unresolved
 

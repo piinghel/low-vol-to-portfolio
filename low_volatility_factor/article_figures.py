@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import argparse
+import json
 from collections.abc import Callable
 from functools import partial
 from pathlib import Path
 
 import polars as pl
 
-from .config import PlotConfig, ResearchConfig
+from .config import BetaConfig, DataConfig, PlotConfig, ResearchConfig, ScenarioConfig
 from .plot_diagnostics import (
     plot_beta_diagnostic,
     plot_decile_profile,
@@ -78,3 +80,45 @@ def render_article_figures(
     for plot_config, suffix in variants:
         for stem, renderer in figure_renderers(plot_config).items():
             render_figure(figures, stem, renderer, variant_suffix=suffix)
+            if stem in {
+                "naive_leg_risk",
+                "performance_and_drawdowns",
+                "regime_comparison",
+            }:
+                render_figure(
+                    figures,
+                    stem + "_mobile",
+                    partial(renderer, mobile=True),
+                    variant_suffix=suffix,
+                )
+
+
+def main() -> None:
+    """Rebuild displays from compact saved results, without loading stock data."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--input", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    saved = json.loads((args.input / "config.json").read_text())
+    # Renderers use these saved settings; no signal or backtest is constructed.
+    config = ResearchConfig(
+        data=DataConfig(**saved["data"]),
+        scenarios=ScenarioConfig(**saved["scenarios"]),
+        plots=PlotConfig(**saved["plots"]),
+        beta=BetaConfig(**saved["beta"]),
+    )
+    args.output.mkdir(parents=True, exist_ok=False)
+    render_article_figures(
+        args.output,
+        decile_metrics=pl.scan_csv(args.input / "decile_metrics.csv").collect(),
+        stage_metrics=pl.scan_csv(args.input / "stage_metrics.csv").collect(),
+        stage_daily=pl.scan_parquet(args.input / "stage_daily.parquet").collect(),
+        scaled_leg_daily=pl.scan_parquet(
+            args.input / "scaled_leg_daily.parquet"
+        ).collect(),
+        config=config,
+    )
+
+
+if __name__ == "__main__":
+    main()
