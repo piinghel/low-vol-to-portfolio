@@ -15,12 +15,13 @@ def prepare_held_returns(
     date_to_signal: pl.DataFrame,
     data_config: DataConfig,
 ) -> pl.DataFrame:
-    """Join returns to held positions and close trailing uncovered rows.
+    """Join vendor returns to held positions for the return-quality diagnostic.
 
     The source panel is sparse for some older securities. Missing dates inside
-    a security's observed life therefore carry a zero return; dates after its
-    last observation close the position, matching the package's delisting
-    convention.
+    a security's observed life therefore carry a zero return. This diagnostic
+    omits dates outside the observed return coverage within each holding period;
+    it does not close positions. Portfolio P&L separately carries adjusted prices
+    forward until targets remove the holding, with no additional terminal payoff.
     """
 
     date_col = data_config.date_column

@@ -191,3 +191,51 @@ def test_held_return_quality_marks_internal_missing_dates() -> None:
 
     assert result.get_column("missing_return").to_list() == [False, True, False]
     assert result.get_column("total_return").to_list() == [0.10, 0.0, 0.20]
+
+
+def test_missing_terminal_price_carries_until_rebalance_and_charges_exit() -> None:
+    """Characterize stale-price handling; this is not an event-payoff model."""
+    dates = [date(2024, 1, day) for day in (2, 3, 4, 5)]
+    targets = pl.DataFrame(
+        {
+            "signal_date": [dates[0], dates[2]],
+            "asset_id_bb_global": ["A", "B"],
+            "scenario": ["test", "test"],
+            "weight": [1.0, 1.0],
+            "stock_beta": [1.0, 1.0],
+        }
+    )
+    prices = pl.DataFrame(
+        {
+            "date": [dates[0], dates[1], *dates],
+            "asset_id_bb_global": ["A", "A", "B", "B", "B", "B"],
+            "px_last": [100.0, 80.0, 100.0, 100.0, 100.0, 100.0],
+        }
+    )
+    date_to_signal = pl.DataFrame(
+        {
+            "date": dates[1:],
+            "signal_date": [dates[0], dates[0], dates[2]],
+            "market_return": [0.0, 0.0, 0.0],
+        }
+    )
+    schedule = pl.DataFrame(
+        {
+            "signal_date": [dates[0], dates[2]],
+            "execution_date": [dates[0], dates[2]],
+            "effective_return_date": [dates[1], dates[3]],
+        }
+    )
+    result = simulate_stock_targets(
+        targets,
+        prices,
+        date_to_signal,
+        schedule,
+        DataConfig(data_root=Path(".")),
+        CostConfig(equity_cost_bps=5.0),
+    )
+
+    assert result["gross_return"].to_list() == pytest.approx([-0.2, 0.0, 0.0])
+    assert result["gross_exposure"].to_list() == pytest.approx([0.8, 0.8, 1.0])
+    assert result["equity_turnover"].to_list() == pytest.approx([1.0, 0.0, 1.8])
+    assert result["equity_cost"].to_list() == pytest.approx([0.0005, 0.0, 0.0009])

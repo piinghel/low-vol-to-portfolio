@@ -40,6 +40,11 @@ screen leaves complete 126-day ranking histories in all 523,177 retained
 stock/rebalance observations. The portfolio is fixed-notional; compounded
 performance indices are not financed account histories.
 
+The [September evidence review](docs/evidence-review-2026-09-05.md) reconciles
+the corrected table and episodes and records the unresolved terminal-event
+treatment. Missing prices carry forward; the backtest does not add separate
+delisting or merger payoffs.
+
 ## Check
 
 ```bash
