@@ -69,10 +69,25 @@ screen leaves complete 126-day ranking histories in all 523,177 retained
 stock/rebalance observations. The portfolio is fixed-notional; compounded
 performance indices are not financed account histories.
 
-The [September evidence review](docs/evidence-review-2026-09-05.md) reconciles
-the corrected table and episodes and records the unresolved terminal-event
-treatment. Missing prices carry forward; the backtest does not add separate
-delisting or merger payoffs.
+Saved daily results reconcile the published table and episodes. Gross minus
+net P&L matches the 5 bp turnover charge within `4.2e-17`; the two scaled books'
+gross contributions sum to the portfolio within `2.1e-17`.
+
+Missing adjusted prices carry forward for valuation and execution. Holdings
+remain until a subsequent rebalance replaces them; the backtest adds no separate
+delisting payment, cash merger proceeds, share conversion or successor holding.
+The diagnostic that trims uncovered return dates does not change this P&L rule.
+Terminal-event economics are captured only to the extent already embedded in
+adjusted prices. The available merger metadata does not establish per-share
+terminal payoffs, and the size and sign of any resulting bias remain unresolved.
+Evaluating that bias requires verified security-level event dates and payoffs,
+reconciled against adjusted prices to avoid double counting.
+
+Regenerate the article's light/dark desktop and phone figures from saved results:
+
+```bash
+uv run python -m low_volatility_factor.article_figures --input output/turnover-review-2026-09-05 --output output/article-figures
+```
 
 ## Check
 
