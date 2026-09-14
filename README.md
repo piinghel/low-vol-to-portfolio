@@ -91,6 +91,25 @@ uv run python -m low_volatility_factor.article_figures --input output/turnover-r
 
 ## Check
 
+Reproduce the article's full-sample realized-beta diagnostic and Table 1 from
+the retained daily outputs:
+
+```bash
+uv run python -m low_volatility_factor.beta_comparison \
+  --input output/turnover-review-2026-09-05 \
+  --output output/beta-comparison-2026-09-14
+```
+
+The diagnostic subtracts each rule's full-sample net-return OLS beta times
+the stored Russell 1000 return, preserving the intercept and existing equity
+costs. It uses the original fixed-notional denominator and 252-session
+annualization. These are hindsight return adjustments with zero financing and
+hedge costs. The output contains reconciled raw/adjusted metrics, daily returns,
+signed book betas for the article's rallies, input hashes and generated table
+HTML. Copy `table.html` into the post when regenerating Table 1. Research
+interpretations are maintained in the shared experiment registry under
+`low_vol_factor`, experiment `low-vol:exp:realized-beta-comparison`.
+
 ```bash
 uv run ruff check .
 uv run ruff format --check .
