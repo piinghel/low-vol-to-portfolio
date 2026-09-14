@@ -5,6 +5,21 @@ Portfolio](https://piinghel.github.io/quant/2024/12/15/low-volatility-factor.htm
 
 ## Start with the sizing rule
 
+The causal hedge comparison reuses the saved signal-date target exposures:
+
+```bash
+uv run python -m low_volatility_factor.beta_hedge --input output/turnover-review-2026-09-05 --output output/point-in-time-beta-2026-09-14
+```
+
+Each hedge offsets the signal-date weighted stock beta, trades at the next
+close and holds index quantities until the next stock rebalance. The shared
+P&L package computes returns, turnover and 5 bp trading costs. Financing is
+3% annually on signed prior-close index notional, ACT/365, with daily P&L
+swept and 0%/5% sensitivity cases. This synthetic index overlay retains the
+original stock accounting; it does not reconstruct historical futures rolls,
+basis or historical funding rates. The older `beta_comparison` module remains
+a separate full-sample hindsight diagnostic and does not size these hedges.
+
 From the repository root, with Python 3.12 or later and
 [uv](https://docs.astral.sh/uv/):
 
