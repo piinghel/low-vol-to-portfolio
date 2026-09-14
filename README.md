@@ -13,12 +13,24 @@ uv run python -m low_volatility_factor.beta_hedge --input output/turnover-review
 
 Each hedge offsets the signal-date weighted stock beta, trades at the next
 close and holds index quantities until the next stock rebalance. The shared
-P&L package computes returns, turnover and 5 bp trading costs. Financing is
-3% annually on signed prior-close index notional, ACT/365, with daily P&L
-swept and 0%/5% sensitivity cases. This synthetic index overlay retains the
+P&L package computes returns, turnover and 5 bp trading costs. The published
+comparison uses the saved zero-funding case. The run also retains historical
+3% and 5% funding sensitivities on signed prior-close index notional, ACT/365,
+with daily P&L swept. This synthetic index overlay retains the
 original stock accounting; it does not reconstruct historical futures rolls,
 basis or historical funding rates. The older `beta_comparison` module remains
 a separate full-sample hindsight diagnostic and does not size these hedges.
+
+Rebuild the published annual-return decile chart and three-series performance
+chart from the completed results:
+
+```bash
+uv run python -m low_volatility_factor.hedge_figures --baseline output/turnover-review-2026-09-05 --hedge output/point-in-time-beta-2026-09-14 --output output/article-hedge-2026-09-14
+```
+
+Figure 3 adds the equal-weight portfolio with a Russell 1000 hedge at each
+stock rebalance. The renderer checks its annual return and drawdown against
+the saved zero-funding metrics before exporting light/dark and phone variants.
 
 From the repository root, with Python 3.12 or later and
 [uv](https://docs.astral.sh/uv/):

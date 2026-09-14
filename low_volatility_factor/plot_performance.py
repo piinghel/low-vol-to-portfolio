@@ -60,10 +60,20 @@ def plot_performance_and_drawdowns(
     plot_config: PlotConfig,
     *,
     mobile: bool = False,
+    include_hedge: bool = False,
 ) -> None:
     """Plot cumulative wealth and drawdowns in one aligned figure."""
 
     scenarios, labels, colors = _comparison_style(scenario_config, plot_config)
+    hedge_scenario = "equal_weight_beta_hedged"
+    if include_hedge:
+        scenarios.append(hedge_scenario)
+        labels = {
+            scenarios[0]: "Equal-weight",
+            scenarios[1]: "Inverse-volatility",
+            hedge_scenario: "Equal-weight + beta hedge",
+        }
+        colors[hedge_scenario] = plot_config.high_volatility_color
     filtered = daily.filter(pl.col("scenario").is_in(scenarios))
     performance = cumulative_returns(filtered, return_column="net_return")
     drawdowns = drawdown_series(filtered, return_column="net_return")
@@ -80,7 +90,14 @@ def plot_performance_and_drawdowns(
         wealth = performance.filter(pl.col("scenario") == scenario).sort("date")
         wealth_dates = wealth.get_column("date").to_list()
         wealth_values = wealth.get_column("wealth")
-        wealth_axis.plot(wealth_dates, wealth_values, color=colors[scenario])
+        line_style = "--" if scenario == hedge_scenario else "-"
+        wealth_axis.plot(
+            wealth_dates,
+            wealth_values,
+            color=colors[scenario],
+            linestyle=line_style,
+            label=labels[scenario],
+        )
         wealth_endpoints[scenario] = (
             wealth_dates[-1],
             require_finite_float(wealth_values[-1], f"final wealth for {scenario}"),
@@ -89,7 +106,12 @@ def plot_performance_and_drawdowns(
         dates = drawdown.get_column("date").to_list()
         values = drawdown.get_column("drawdown") * 100
         drawdown_axis.plot(
-            dates, values, color=colors[scenario], linewidth=1.5, zorder=3
+            dates,
+            values,
+            color=colors[scenario],
+            linewidth=1.5,
+            zorder=3,
+            linestyle=line_style,
         )
         if scenario == scenario_config.naive_equal_weight_long_short:
             drawdown_axis.fill_between(
@@ -133,8 +155,20 @@ def plot_performance_and_drawdowns(
         performance.get_column("date").min(),
         last_date + timedelta(days=180),
     )
+    if include_hedge:
+        figure.legend(
+            *wealth_axis.get_legend_handles_labels(),
+            loc="upper left",
+            bbox_to_anchor=(0.08, 1.0),
+            ncol=1 if mobile else 3,
+            frameon=False,
+            labelcolor=plot_config.text_color,
+            fontsize=10,
+        )
     for index, scenario in enumerate(
-        sorted(scenarios, key=lambda item: wealth_endpoints[item][1])
+        []
+        if include_hedge
+        else sorted(scenarios, key=lambda item: wealth_endpoints[item][1])
     ):
         _, value = wealth_endpoints[scenario]
         wealth_axis.annotate(
@@ -178,7 +212,7 @@ def plot_performance_and_drawdowns(
         left=0.14 if mobile else 0.09,
         right=0.99,
         bottom=0.09,
-        top=0.98,
+        top=(0.81 if mobile else 0.88) if include_hedge else 0.98,
         hspace=0.08,
     )
     finish_figure(figure, path, plot_config, tight_layout=False)

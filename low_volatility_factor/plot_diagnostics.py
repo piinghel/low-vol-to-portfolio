@@ -33,7 +33,7 @@ def plot_decile_profile(
     )
     specs = [
         ("sharpe_ratio", "Sharpe ratio", 1.0),
-        ("geometric_return", "Geometric return (%)", 100.0),
+        ("geometric_return", "Annual return (%)", 100.0),
         ("volatility", "Volatility (%)", 100.0),
     ]
     for axis, (column, title, multiplier) in zip(axes, specs, strict=True):
