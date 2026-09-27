@@ -77,6 +77,7 @@ def finish_figure(
         bbox_inches="tight",
         pad_inches=0.03,
         facecolor=plot_config.background_color,
+        metadata={"Date": None} if path.suffix.lower() == ".svg" else None,
     )
     if path.suffix.lower() == ".svg":
         svg = path.read_text(encoding="utf-8")
@@ -106,9 +107,12 @@ def render_figure(
 ) -> None:
     """Render the shared SVG layout used at every viewport width."""
 
+    # A fixed salt keeps SVG element ids stable, so re-renders only differ when
+    # the figure itself changes.
     with plt.rc_context(
         {
             "font.family": "DejaVu Sans",
+            "svg.hashsalt": f"{stem}{variant_suffix}",
         }
     ):
         renderer(path=figures / f"{stem}{variant_suffix}.svg")

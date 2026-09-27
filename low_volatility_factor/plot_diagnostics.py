@@ -70,6 +70,25 @@ def plot_decile_profile(
         ]
         axis.set_xticks(x, tick_labels)
         clean_axis(axis, plot_config)
+    if mobile:
+        # Name the ends once, under the last panel, anchored to its edges so they
+        # cannot run into the decile numbers; colours match the highlighted bars.
+        for text, anchor, align, color in (
+            ("Low-vol", 0.0, "left", plot_config.low_volatility_color),
+            ("High-vol", 1.0, "right", plot_config.high_volatility_color),
+        ):
+            axes[-1].annotate(
+                text,
+                (anchor, 0.0),
+                xycoords="axes fraction",
+                xytext=(0, -24),
+                textcoords="offset points",
+                ha=align,
+                va="top",
+                color=color,
+                fontsize=11.5,
+                fontweight="bold",
+            )
     finish_figure(
         figure,
         path,
