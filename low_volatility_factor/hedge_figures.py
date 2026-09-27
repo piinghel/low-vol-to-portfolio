@@ -8,6 +8,7 @@ import json
 from functools import partial
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 
@@ -63,20 +64,23 @@ def main() -> None:
                 ),
                 variant_suffix=suffix,
             )
-        for mobile in (False, True):
-            plot_style.render_figure(
-                args.output,
-                "performance_and_drawdowns" + ("_mobile" if mobile else ""),
-                partial(
-                    plot_performance.plot_performance_and_drawdowns,
-                    plotted,
-                    scenario_config=config.ScenarioConfig(),
-                    plot_config=theme,
-                    mobile=mobile,
-                    include_hedge=True,
-                ),
-                variant_suffix=suffix,
-            )
+        # 7,771 daily points per line: drop vertices that move a path by less than one pixel,
+        # which keeps the exported SVGs small without visible change.
+        with plt.rc_context({"path.simplify_threshold": 1.0}):
+            for mobile in (False, True):
+                plot_style.render_figure(
+                    args.output,
+                    "performance_and_drawdowns" + ("_mobile" if mobile else ""),
+                    partial(
+                        plot_performance.plot_performance_and_drawdowns,
+                        plotted,
+                        scenario_config=config.ScenarioConfig(),
+                        plot_config=theme,
+                        mobile=mobile,
+                        include_hedge=True,
+                    ),
+                    variant_suffix=suffix,
+                )
     manifest = {
         "method": "Saved point-in-time Russell 1000 hedge, rebalanced with stocks; 5bp trading costs; no funding charge. No new experiment or fitted full-sample hedge.",
         "checks": "Plotted hedge metrics reconcile to the previously completed zero-funding case.",
