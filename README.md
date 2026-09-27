@@ -116,6 +116,13 @@ Regenerate the article's light/dark desktop and phone figures from saved results
 uv run python -m low_volatility_factor.article_figures --input output/turnover-review-2026-09-05 --output output/article-figures
 ```
 
+Split each scaled book's P&L in the article's two rallies into the part its own
+market beta explains (ex-ante stock beta and in-window OLS beta) and a residual:
+
+```bash
+uv run python -m low_volatility_factor.rally_decomposition --input output/turnover-review-2026-09-05 --output output/rally-decomposition-2026-09-27
+```
+
 ## Check
 
 Reproduce the article's full-sample realized-beta diagnostic and Table 1 from
