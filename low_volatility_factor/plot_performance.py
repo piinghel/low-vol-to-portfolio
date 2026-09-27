@@ -405,23 +405,25 @@ def plot_regime_comparison(
 ) -> None:
     """Contrast a completed rally/reversal with the still-open recent rally."""
 
-    episodes: tuple[tuple[date, date, str, int], ...] = (
+    episodes: tuple[tuple[date, date, str, int, date | None], ...] = (
         (
             date(1998, 10, 8),
             date(2001, 4, 3),
             "A  Dot-com: rally, then reversal",
             6,
+            date(2000, 3, 9),
         ),
         (
             date(2025, 4, 3),
             date(2026, 5, 27),
             "B  April 2025–May 2026 rally",
             3,
+            None,
         ),
     )
     episode_series = [
         (
-            (start, end, title, tick_months),
+            (start, end, title, tick_months, marker),
             _episode_series(
                 daily,
                 scaled_leg_daily,
@@ -430,7 +432,7 @@ def plot_regime_comparison(
                 end=end,
             ),
         )
-        for start, end, title, tick_months in episodes
+        for start, end, title, tick_months, marker in episodes
     ]
 
     figure, axes = plt.subplots(
@@ -475,7 +477,7 @@ def plot_regime_comparison(
     for (episode, series), (wealth_axis, legs_axis) in zip(
         episode_series, episode_axes, strict=True
     ):
-        start, end, title, tick_months = episode
+        start, end, title, tick_months, marker = episode
         strategy, market, long_leg, short_leg = series
         market_dates = market.get_column("date").to_list()
         market_wealth = market.get_column("wealth").to_list()
@@ -582,12 +584,37 @@ def plot_regime_comparison(
         legs_axis.set_ylim(*contribution_limits)
         legs_axis.yaxis.set_major_locator(MaxNLocator(nbins=4))
         legs_axis.yaxis.set_major_formatter(
-            FuncFormatter(lambda value, _: f"{value:+.0f} pp" if value else "0 pp")
+            FuncFormatter(
+                lambda value, _: (
+                    f"{value:+.0f} pp".replace("-", "\u2212") if value else "0 pp"
+                )
+            )
         )
         _grid_to_last_observation(wealth_axis, 1.0, start, end, plot_config)
         _grid_to_last_observation(legs_axis, 0.0, start, end, plot_config)
+        if marker is not None:
+            # The reported episode ends here; the panel continues into the reversal.
+            for axis in (wealth_axis, legs_axis):
+                axis.axvline(
+                    marker,
+                    color=plot_config.muted_text_color,
+                    linewidth=0.9,
+                    linestyle=(0, (2, 3)),
+                    alpha=0.7,
+                    zorder=0,
+                )
+            legs_axis.annotate(
+                marker.strftime("%-d %b %Y"),
+                (marker, contribution_limits[1]),
+                xytext=(4, -2),
+                textcoords="offset points",
+                ha="left",
+                va="top",
+                color=plot_config.muted_text_color,
+                fontsize=11.0 if mobile else 12.0,
+            )
         legs_axis.set_title(
-            "Cumulative contributions (pp)",
+            "Cumulative book contributions",
             loc="left",
             pad=8,
             color=panel_title_color,
@@ -607,8 +634,8 @@ def plot_regime_comparison(
         path,
         plot_config,
         tight_layout=False,
-        tick_label_size=12.0 if mobile else 14.0,
-        title_size=13.0 if mobile else 16.0,
+        tick_label_size=13.0 if mobile else 14.0,
+        title_size=13.5 if mobile else 16.0,
         axis_label_size=11.5,
         legend_size=10.5,
     )
