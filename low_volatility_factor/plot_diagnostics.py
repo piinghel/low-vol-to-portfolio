@@ -19,6 +19,8 @@ def plot_decile_profile(
     metrics: pl.DataFrame,
     path: Path,
     plot_config: PlotConfig,
+    *,
+    mobile: bool = False,
 ) -> None:
     """Plot return, risk, and Sharpe across volatility deciles."""
 
@@ -29,7 +31,7 @@ def plot_decile_profile(
     figure, axes = plt.subplots(
         3,
         1,
-        figsize=(9, 8.0),
+        figsize=(4.8, 7.4) if mobile else (9, 8.0),
     )
     specs = [
         ("sharpe_ratio", "Sharpe ratio", 1.0),
@@ -56,17 +58,26 @@ def plot_decile_profile(
             color=plot_config.muted_text_color,
             fontweight="normal",
         )
+        # On phones the end labels would collide with neighbouring deciles; the
+        # highlighted colours and the caption identify deciles 1 and 10.
         tick_labels = [
             "1\nLow-vol"
-            if decile == min(x)
+            if decile == min(x) and not mobile
             else "10\nHigh-vol"
-            if decile == max(x)
+            if decile == max(x) and not mobile
             else str(decile)
             for decile in x
         ]
         axis.set_xticks(x, tick_labels)
         clean_axis(axis, plot_config)
-    finish_figure(figure, path, plot_config, axis_label_size=14.5)
+    finish_figure(
+        figure,
+        path,
+        plot_config,
+        axis_label_size=14.5,
+        tick_label_size=11.5 if mobile else 10.6,
+        title_size=12.5 if mobile else 12.1,
+    )
 
 
 def plot_naive_leg_risk(

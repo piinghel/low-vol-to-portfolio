@@ -159,6 +159,7 @@ class PlotConfig:
     high_volatility_color: str = "#756A8E"
     naive_long_short_color: str = "#9AA6AF"
     volatility_scaled_color: str = "#345B7E"
+    hedged_equal_weight_color: str = "#C0772F"
     realized_beta_color: str = "#3E4E5C"
     ex_ante_beta_color: str = "#B8C0C7"
     text_color: str = "#2E3A45"

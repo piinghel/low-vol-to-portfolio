@@ -51,12 +51,18 @@ def main() -> None:
         (config.PlotConfig(), ""),
         (plot_style.dark_plot_config(config.PlotConfig()), "_dark"),
     ):
-        plot_style.render_figure(
-            args.output,
-            "decile_profile",
-            partial(plot_diagnostics.plot_decile_profile, deciles, plot_config=theme),
-            variant_suffix=suffix,
-        )
+        for mobile in (False, True):
+            plot_style.render_figure(
+                args.output,
+                "decile_profile" + ("_mobile" if mobile else ""),
+                partial(
+                    plot_diagnostics.plot_decile_profile,
+                    deciles,
+                    plot_config=theme,
+                    mobile=mobile,
+                ),
+                variant_suffix=suffix,
+            )
         for mobile in (False, True):
             plot_style.render_figure(
                 args.output,

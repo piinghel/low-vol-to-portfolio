@@ -28,6 +28,83 @@ def _panel_title_color(plot_config: PlotConfig) -> str:
     return plot_config.text_color
 
 
+def _grid_to_last_observation(
+    axis: plt.Axes,
+    reference: float,
+    start: date,
+    end: date,
+    plot_config: PlotConfig,
+) -> None:
+    """Draw horizontal grid and reference lines only across the data, clear of labels."""
+
+    axis.grid(False, axis="y")
+    x_start, x_end = mdates.date2num(start), mdates.date2num(end)
+    low, high = axis.get_ylim()
+    visible = [tick for tick in axis.get_yticks() if low <= tick <= high]
+    axis.set_yticks(visible)
+    axis.set_ylim(low, high)
+    for tick in visible:
+        axis.hlines(
+            tick,
+            x_start,
+            x_end,
+            color=plot_config.zero_line_color
+            if abs(tick - reference) < 1e-9
+            else plot_config.grid_color,
+            linewidth=0.8,
+            zorder=0,
+        )
+    if not low <= reference <= high:
+        return
+    if all(abs(tick - reference) >= 1e-9 for tick in visible):
+        axis.hlines(
+            reference,
+            x_start,
+            x_end,
+            color=plot_config.zero_line_color,
+            linewidth=0.8,
+            zorder=0,
+        )
+
+
+def _label_line_ends(
+    axis: plt.Axes,
+    ends: list[tuple[str, float, str]],
+    label_x: date,
+    *,
+    fontsize: float,
+    min_gap_points: float,
+) -> None:
+    """Write series names beside their last values, pushed apart when they collide."""
+
+    axis.get_ylim()  # settle autoscaled limits before converting to display units
+    to_display = axis.transData
+    points_per_pixel = 72 / axis.figure.dpi
+    placed = sorted(
+        (
+            (label, to_display.transform((mdates.date2num(label_x), value))[1], color)
+            for label, value, color in ends
+        ),
+        key=lambda item: -item[1],
+    )
+    positions: list[float] = []
+    for _, y, _ in placed:
+        limit = positions[-1] - min_gap_points / points_per_pixel if positions else y
+        positions.append(min(y, limit))
+    x_display = to_display.transform((mdates.date2num(label_x), 1.0))[0]
+    for (label, _, color), y in zip(placed, positions, strict=True):
+        _, y_data = to_display.inverted().transform((x_display, y))
+        axis.annotate(
+            label,
+            xy=(label_x, y_data),
+            ha="left",
+            va="center",
+            color=color,
+            fontsize=fontsize,
+            annotation_clip=False,
+        )
+
+
 def _comparison_style(
     scenario_config: ScenarioConfig,
     plot_config: PlotConfig,
@@ -73,7 +150,7 @@ def plot_performance_and_drawdowns(
             scenarios[1]: "Inverse-volatility",
             hedge_scenario: "Equal-weight + beta hedge",
         }
-        colors[hedge_scenario] = plot_config.high_volatility_color
+        colors[hedge_scenario] = plot_config.hedged_equal_weight_color
     filtered = daily.filter(pl.col("scenario").is_in(scenarios))
     performance = cumulative_returns(filtered, return_column="net_return")
     drawdowns = drawdown_series(filtered, return_column="net_return")
@@ -86,6 +163,7 @@ def plot_performance_and_drawdowns(
     )
     wealth_axis, drawdown_axis = axes
     wealth_endpoints: dict[str, tuple[date, float]] = {}
+    wealth_starts: dict[str, date] = {}
     for scenario in scenarios:
         wealth = performance.filter(pl.col("scenario") == scenario).sort("date")
         wealth_dates = wealth.get_column("date").to_list()
@@ -98,6 +176,7 @@ def plot_performance_and_drawdowns(
             linestyle=line_style,
             label=labels[scenario],
         )
+        wealth_starts[scenario] = wealth_dates[0]
         wealth_endpoints[scenario] = (
             wealth_dates[-1],
             require_finite_float(wealth_values[-1], f"final wealth for {scenario}"),
@@ -150,40 +229,29 @@ def plot_performance_and_drawdowns(
         fontweight="bold",
     )
     last_date = max(date_value for date_value, _ in wealth_endpoints.values())
-    label_date = last_date + timedelta(days=80)
-    wealth_axis.set_xlim(
-        performance.get_column("date").min(),
-        last_date + timedelta(days=180),
+    first_date = min(wealth_starts.values())
+    # Room beside the last observation for the series names.
+    label_room = (last_date - first_date) * (
+        (0.30 if mobile else 0.16) if include_hedge else 0.02
     )
-    if include_hedge:
-        figure.legend(
-            *wealth_axis.get_legend_handles_labels(),
-            loc="upper left",
-            bbox_to_anchor=(0.08, 1.0),
-            ncol=1 if mobile else 3,
-            frameon=False,
-            labelcolor=plot_config.text_color,
-            fontsize=10,
-        )
-    for index, scenario in enumerate(
-        []
-        if include_hedge
-        else sorted(scenarios, key=lambda item: wealth_endpoints[item][1])
-    ):
-        _, value = wealth_endpoints[scenario]
-        wealth_axis.annotate(
-            labels[scenario].replace("\nlong/short", "")
-            if mobile
-            else labels[scenario],
-            xy=(label_date, value),
-            xytext=(-12 if mobile else 0, -16 if index == 0 else 16),
-            textcoords="offset points",
-            ha="right" if mobile else "left",
-            va="center",
-            color=colors[scenario],
-            fontsize=10.5,
-            fontweight="normal",
-        )
+    wealth_axis.set_xlim(first_date, last_date + label_room)
+    if not include_hedge:
+        for index, scenario in enumerate(
+            sorted(scenarios, key=lambda item: wealth_endpoints[item][1])
+        ):
+            _, value = wealth_endpoints[scenario]
+            wealth_axis.annotate(
+                labels[scenario].replace("\nlong/short", "")
+                if mobile
+                else labels[scenario],
+                xy=(last_date + timedelta(days=80), value),
+                xytext=(-12 if mobile else 0, -16 if index == 0 else 16),
+                textcoords="offset points",
+                ha="right" if mobile else "left",
+                va="center",
+                color=colors[scenario],
+                fontsize=10.5,
+            )
     drawdown_axis.set_title(
         "Drawdown (%)",
         loc="left",
@@ -193,28 +261,40 @@ def plot_performance_and_drawdowns(
     )
     for axis in axes:
         clean_axis(axis, plot_config)
-    drawdown_axis.xaxis.set_major_locator(mdates.YearLocator(10 if mobile else 5))
-    drawdown_axis.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-    wealth_axis.axhline(1.0, color=plot_config.zero_line_color, linewidth=0.8, zorder=0)
-    drawdown_axis.axhline(
-        0.0, color=plot_config.zero_line_color, linewidth=0.8, zorder=0
+    step = 10 if mobile else 5
+    drawdown_axis.set_xticks(
+        [date(year, 1, 1) for year in range(2000, last_date.year + 1, step)]
     )
-    wealth_axis.grid(False, axis="y")
-    for tick in wealth_axis.get_yticks():
-        if abs(tick - 1.0) > 1e-9:
-            wealth_axis.axhline(
-                tick,
-                color=plot_config.grid_color,
-                linewidth=0.8,
-                zorder=0,
-            )
+    drawdown_axis.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    for axis, reference in ((wealth_axis, 1.0), (drawdown_axis, 0.0)):
+        _grid_to_last_observation(axis, reference, first_date, last_date, plot_config)
     figure.subplots_adjust(
         left=0.14 if mobile else 0.09,
         right=0.99,
         bottom=0.09,
-        top=(0.81 if mobile else 0.88) if include_hedge else 0.98,
+        top=0.95,
         hspace=0.08,
     )
+    if include_hedge:
+        hedge_labels = {
+            scenarios[0]: "Equal-weight",
+            scenarios[1]: "Inverse-\nvolatility" if mobile else "Inverse-volatility",
+            hedge_scenario: "Hedged\nequal-weight",
+        }
+        _label_line_ends(
+            wealth_axis,
+            [
+                (
+                    hedge_labels[scenario],
+                    wealth_endpoints[scenario][1],
+                    colors[scenario],
+                )
+                for scenario in scenarios
+            ],
+            last_date + (last_date - first_date) * 0.012,
+            fontsize=11.5 if mobile else 11.0,
+            min_gap_points=30,
+        )
     finish_figure(figure, path, plot_config, tight_layout=False)
 
 
@@ -431,7 +511,7 @@ def plot_regime_comparison(
         )
 
         label_size = 12.0 if mobile else 14.0
-        label_date = end + (end - start) * 0.025
+        label_date = end + (end - start) * 0.03
         for axis, values, label, color, offset in (
             (
                 wealth_axis,
@@ -495,21 +575,17 @@ def plot_regime_comparison(
             clean_axis(axis, plot_config)
         wealth_axis.tick_params(axis="x", labelbottom=False)
         wealth_axis.set_ylim(*wealth_limits)
-        wealth_axis.axhline(
-            1.0, color=plot_config.zero_line_color, linewidth=0.8, zorder=0
-        )
         wealth_axis.yaxis.set_major_locator(MaxNLocator(nbins=4))
         wealth_axis.yaxis.set_major_formatter(
             FuncFormatter(lambda value, _: f"{value:.2f}".rstrip("0").rstrip(".") + "×")
         )
         legs_axis.set_ylim(*contribution_limits)
-        legs_axis.axhline(
-            0.0, color=plot_config.zero_line_color, linewidth=0.8, zorder=0
-        )
         legs_axis.yaxis.set_major_locator(MaxNLocator(nbins=4))
         legs_axis.yaxis.set_major_formatter(
-            FuncFormatter(lambda value, _: f"{value:+.0f} pp")
+            FuncFormatter(lambda value, _: f"{value:+.0f} pp" if value else "0 pp")
         )
+        _grid_to_last_observation(wealth_axis, 1.0, start, end, plot_config)
+        _grid_to_last_observation(legs_axis, 0.0, start, end, plot_config)
         legs_axis.set_title(
             "Cumulative contributions (pp)",
             loc="left",
