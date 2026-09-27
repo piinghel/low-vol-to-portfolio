@@ -21,8 +21,8 @@ original stock accounting; it does not reconstruct historical futures rolls,
 basis or historical funding rates. The older `beta_comparison` module remains
 a separate full-sample hindsight diagnostic and does not size these hedges.
 
-Rebuild the published annual-return decile chart and three-series performance
-chart from the completed results:
+Rebuild the published decile chart (Figure 1) and three-series performance chart
+(Figure 3) from the completed results:
 
 ```bash
 uv run python -m low_volatility_factor.hedge_figures --baseline output/turnover-review-2026-09-05 --hedge output/point-in-time-beta-2026-09-14 --output output/article-hedge-2026-09-14
@@ -110,7 +110,11 @@ terminal payoffs, and the size and sign of any resulting bias remain unresolved.
 Evaluating that bias requires verified security-level event dates and payoffs,
 reconciled against adjusted prices to avoid double counting.
 
-Regenerate the article's light/dark desktop and phone figures from saved results:
+Regenerate the book-risk chart (Figure 2), the rally figure (Figure 4) and the
+run's diagnostic figures, light/dark and desktop/phone, from saved results. Its
+decile and unhedged performance charts are run diagnostics; the published versions
+come from `hedge_figures` above. Both renderers write identical SVGs on repeated
+runs, so the blog copies can be compared byte for byte:
 
 ```bash
 uv run python -m low_volatility_factor.article_figures --input output/turnover-review-2026-09-05 --output output/article-figures

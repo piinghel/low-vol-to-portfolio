@@ -51,7 +51,9 @@ def decompose(legs: pl.DataFrame) -> pl.DataFrame:
                     "episode": episode,
                     "book": book,
                     "total_pp": 100 * pnl.sum(),
-                    "ex_ante_beta": float(part.get_column("stock_beta").mean()),
+                    "ex_ante_beta": float(
+                        part.get_column("stock_beta").to_numpy().mean()
+                    ),
                     "ex_ante_beta_pp": 100 * ex_ante.sum(),
                     "ex_ante_residual_pp": 100 * (pnl - ex_ante).sum(),
                     "in_window_beta": beta,
