@@ -20,8 +20,8 @@ def dark_plot_config(plot_config: PlotConfig) -> PlotConfig:
     return replace(
         plot_config,
         decile_profile_color="#8B949E",
-        low_volatility_color="#78A0C4",
-        high_volatility_color="#A093B8",
+        low_volatility_color="#199E70",
+        high_volatility_color="#D95926",
         naive_long_short_color="#5C646D",
         volatility_scaled_color="#78A0C4",
         hedged_equal_weight_color="#CF8A46",

@@ -104,7 +104,10 @@ def main() -> None:
     config = ResearchConfig(
         data=DataConfig(**saved["data"]),
         scenarios=ScenarioConfig(**saved["scenarios"]),
-        plots=PlotConfig(**saved["plots"]),
+        # Colours are presentation, not research settings: they come from the current code.
+        plots=PlotConfig(
+            **{k: v for k, v in saved["plots"].items() if not k.endswith("_color")}
+        ),
         beta=BetaConfig(**saved["beta"]),
     )
     args.output.mkdir(parents=True, exist_ok=False)
